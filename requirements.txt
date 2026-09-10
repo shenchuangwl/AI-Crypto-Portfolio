@@ -1,5 +1,15 @@
+# AI Crypto Portfolio — Python runtime dependencies
 # Runtime for market-ingest / contracts / gateway helpers.
 # Selection engine and gateway stay on the stdlib + this list.
-websockets>=12.0
-pydantic>=2.0
-jsonschema>=4.0
+#
+# 跨平台说明：Ubuntu / macOS / Windows（含 WSL2）使用同一份依赖，无需按系统增减。
+#   - 下列包（含传递依赖）在 Linux x86_64/aarch64、macOS arm64/x86_64、Windows x64/arm64 上
+#     均提供 Python 3.11–3.13 的预编译 wheel，安装时无需本地编译器。
+#   - 代码未使用 zoneinfo，Windows 不需要额外安装 tzdata。
+#   - fcntl 属于 POSIX 标准库，无法也无需通过 pip 安装。Windows 原生环境缺少它，
+#     选币扫描（coin_selection.scan）需在 WSL2 或 Docker 中运行，详见 README「跨平台部署指南」。
+# 开发 / 测试依赖见 requirements-dev.txt（在本文件基础上增加 pytest）。
+
+websockets>=12.0   # market-ingest：Binance WebSocket 行情
+pydantic>=2.0      # contracts/python/models.py：dmr-adapter 候选消息校验
+jsonschema>=4.0    # 契约 JSON Schema 单测

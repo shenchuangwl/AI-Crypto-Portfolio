@@ -32,6 +32,7 @@
 - [目录结构](#目录结构)
 - [系统要求](#系统要求)
 - [快速开始](#快速开始)
+- [跨平台部署指南](#跨平台部署指南)
 - [CoinGecko 配置（必读）](#coingecko-配置必读)
 - [环境变量](#环境变量)
 - [服务、端口与访问方式](#服务端口与访问方式)
@@ -134,7 +135,7 @@ AI-Crypto-Portfolio/
 
 | 项 | 要求 | 说明 |
 |---|---|---|
-| 操作系统 | Linux（已验证 Ubuntu，内核 6.8） | macOS / Windows **未验证**；脚本为 bash |
+| 操作系统 | Ubuntu 24.04（已实测）、macOS、Windows（WSL2 / Docker Desktop / 原生受限） | 各平台步骤与差异见 [跨平台部署指南](#跨平台部署指南) |
 | Python | ≥ 3.11 | `services/market-ingest/pyproject.toml` 声明；已验证 3.12.3 |
 | Node.js | `^20.19.0 \|\| >=22.12.0` | Vite 8 的引擎要求；已验证 Node 24.18.0 / npm 12.0.2 |
 | 网络 | 可访问 `fapi.binance.com`、`fstream.binance.com`、`api.coingecko.com` | 部分地区访问 Binance 受限，请自行确认合规 |
@@ -237,6 +238,334 @@ PID 与日志位于 `data/coin-selection/*.pid`、`data/coin-selection/logs/*.lo
 python3 scripts/build_review_ledger.py --reset                # 选币榜（main）
 PYTHONPATH=services/coin-selection/src .venv/bin/python scripts/replay_screener_y.py --all   # 用 v2.0.0 参数回放出选币榜Y账本
 ```
+
+## 跨平台部署指南
+
+本节给出 **Ubuntu、macOS、Windows** 三个平台的完整部署流程。上文“快速开始”是通用摘要，各平台的差异以本节为准。
+
+> **验证范围说明**：Ubuntu 24.04 的流程已实测。macOS 与 Windows 没有真机环境，**未实测**，
+> 相关结论来自以下可复现的静态核查：代码可移植性审计、模拟 Windows 缺少 `fcntl` 时的模块导入测试、
+> 用 `pip download --only-binary=:all:` 核对各平台的预编译 wheel、npm 锁文件中的原生二进制清单。
+> 如在这两个平台上遇到问题，欢迎提交 Issue。
+
+### 平台支持矩阵
+
+| 平台 | 选币扫描 / 15 分钟循环 | 网关 + 前端 | market-ingest | 启停脚本（`*.sh` / `daemonize.py`） | 状态 |
+|---|---|---|---|---|---|
+| **Ubuntu 24.04**（x86_64） | ✅ | ✅ | ✅ | ✅ | **已实测** |
+| Ubuntu 22.04 | ✅（需另装 Python ≥ 3.11） | ✅ | ✅ | ✅ | 未实测 |
+| **macOS**（Apple Silicon / Intel） | ✅ | ✅ | ✅ | ✅ | 未实测（代码为 POSIX 实现，依赖均有 wheel） |
+| **Windows + WSL2**（推荐） | ✅ | ✅ | ✅ | ✅ | 未实测（在 WSL 中的流程与 Ubuntu 相同） |
+| Windows + Docker Desktop | ✅（Linux 容器） | ✅ | ✅ | 由 Compose 代替 | 未实测（Compose 已在 Linux 实测） |
+| **Windows 原生** | ❌ 不支持 | ✅ | ✅ | ❌ 不支持 | 未实测（模拟导入测试通过） |
+
+Windows 原生不支持选币扫描的原因：`services/coin-selection/src/coin_selection/scan.py` 在文件顶部 `import fcntl`，用 `fcntl.flock` 给扫描节点加文件锁，而 `fcntl` 只存在于 POSIX 系统。
+模拟测试显示，缺少 `fcntl` 时只有 `coin_selection.scan` 无法导入；api-gateway、market-ingest、dmr-adapter、dmr-executor 均可正常导入。
+`scripts/*.sh` 依赖 bash；`scripts/daemonize.py` 依赖 POSIX 进程语义（`os.kill(pid, 0)` 存活检测、`SIGKILL`、`start_new_session`），在 Windows 上行为不正确。
+
+### Python 依赖（requirements.txt）与各系统说明
+
+**三个平台使用同一份 `requirements.txt`，不需要按操作系统增减任何包。**
+
+| 文件 | 内容 | 用途 |
+|---|---|---|
+| `requirements.txt` | `websockets>=12.0` | market-ingest 的 Binance WebSocket 行情 |
+| | `pydantic>=2.0` | `contracts/python/models.py`：dmr-adapter 校验候选消息 |
+| | `jsonschema>=4.0` | 契约 JSON Schema 单测 |
+| `requirements-dev.txt` | `-r requirements.txt` + `pytest>=8.0` | 运行全部单测（OnlyCoin 系列使用 pytest） |
+
+对全部源码做 import 审计后，标准库以外的依赖只有以上 4 个包（`pytest` 仅测试使用）。api-gateway 与选币引擎主体只用标准库。
+
+| 平台 / 架构 | Python 3.11 | Python 3.12 | Python 3.13 | 说明 |
+|---|---|---|---|---|
+| Linux x86_64（manylinux） | ✅ | ✅ | ✅ | 本机实装验证（3.12） |
+| Linux aarch64（manylinux） | ✅ | ✅ | ✅ | |
+| macOS arm64（Apple Silicon） | ✅ | ✅ | ✅ | `pydantic-core` / `rpds-py` 为 `macosx_11_0_arm64` wheel |
+| macOS x86_64（Intel） | ✅ | ✅ | ✅ | `macosx_10_12_x86_64` wheel |
+| Windows x64 | ✅ | ✅ | ✅ | `win_amd64` wheel |
+| Windows ARM64 | ✅ | ✅ | ✅ | `win_arm64` wheel |
+
+表中每一格都在 2026-09-10 用 `pip download --only-binary=:all: --platform <平台> --python-version <版本> -r requirements-dev.txt` 核对过：全部依赖（含传递依赖，共 16 个包）均能下载到预编译 wheel，安装时**不需要 C/Rust 编译器**。
+
+关于特定平台的包：
+
+- **不需要 `tzdata`**：代码没有使用 `zoneinfo`，时间一律按 UTC 计算。
+- **不要 `pip install fcntl`**：`fcntl` 是 POSIX 标准库，PyPI 上没有可在 Windows 上替代它的同名包。Windows 请改用 WSL2 或 Docker。
+- **不需要 `python-dotenv`**：`.env` 由项目自带的加载器解析（`coin_selection/envutil.py`、`scripts/daemonize.py`）。
+- 前端依赖由 `apps/web/package-lock.json` 锁定。锁文件已包含 rolldown 与 oxlint 在 `darwin-arm64/x64`、`win32-x64/arm64-msvc`、`linux-x64/arm64` 上的原生二进制，各平台直接执行 `npm ci` 即可。
+
+系统级依赖（不在 `requirements.txt` 中，需要用系统包管理器安装）：
+
+| 依赖 | Ubuntu | macOS | Windows |
+|---|---|---|---|
+| Git | `apt install git` | Xcode Command Line Tools 或 `brew install git` | `winget install Git.Git`（WSL2 内用 `apt`） |
+| Python ≥ 3.11 + venv | 24.04 自带 3.12，需另装 `python3-venv` | `brew install python@3.12` 或 python.org 安装包 | WSL2 内同 Ubuntu；原生用 `winget install Python.Python.3.12` |
+| Node.js `^20.19 \|\| >=22.12` | NodeSource 或 nvm（apt 源版本过旧） | `brew install node` 或 nvm | WSL2 内同 Ubuntu；原生用 `winget install OpenJS.NodeJS.LTS` |
+| CA 证书 | `ca-certificates` | python.org 安装包需运行 `Install Certificates.command` | 系统自带 |
+| Docker（可选） | Docker Engine + Compose v2 | Docker Desktop | Docker Desktop（WSL2 后端） |
+
+### Ubuntu（24.04 LTS，已实测）
+
+以下命令在终端中执行。克隆之后的命令均在**仓库根目录**执行，另有说明的除外。
+
+**1. 安装系统依赖**
+
+```bash
+sudo apt update
+sudo apt install -y git curl ca-certificates python3 python3-venv python3-pip
+python3 --version            # 24.04 为 3.12.x；须 ≥ 3.11
+```
+
+Ubuntu 22.04 自带 Python 3.10，不满足要求，可通过 deadsnakes PPA 安装 3.12，然后在后续命令中用 `python3.12` 代替 `python3`：
+
+```bash
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt install -y python3.12 python3.12-venv
+```
+
+**2. 安装 Node.js**
+
+Ubuntu 官方源中的 `nodejs` 版本低于 Vite 8 要求的 20.19，请改用 NodeSource（或 nvm）：
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v && npm -v            # node 须 ≥ v22.12（或 ≥ v20.19）
+```
+
+**3. 克隆并安装依赖**
+
+```bash
+git clone https://github.com/shenchuangwl/AI-Crypto-Portfolio.git
+cd AI-Crypto-Portfolio
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt        # 需要跑测试时改用 requirements-dev.txt
+cd apps/web && npm ci && npm run build && cd ../..
+```
+
+**4. 配置**
+
+```bash
+cp .env.example .env
+nano .env                    # 填写 COINGECKO_API_KEY；付费 key 同时设置 COINGECKO_USE_PRO=1
+```
+
+**5. 初始化数据并启动**
+
+```bash
+source .venv/bin/activate
+bash scripts/smoke-p1-pipeline.sh                     # 隔离冒烟，末行应为 OK p1 pipeline smoke
+START_SELECTION_LOOP=1 bash scripts/start-all.sh      # ingest + gateway + 15 分钟选币循环
+curl -s http://127.0.0.1:18080/api/v1/health          # 首轮扫描完成前返回 degraded 属正常
+```
+
+浏览器访问 <http://127.0.0.1:18080/terminal>。停止服务：`bash scripts/stop-all.sh`。
+
+**6. Ubuntu 配置要点**
+
+- 服务默认只监听 `127.0.0.1`。如需局域网访问，请设置 `HOST=0.0.0.0 bash scripts/start-all.sh`，并用 `ufw` 限制来源 IP，因为网关没有鉴权。
+- `daemonize.py` 拉起的进程重启后不会自动恢复，开机后需重新执行 `start-all.sh`，或自行配置 systemd 等进程管理器（仓库未提供现成配置）。
+- 定时清理数据：先把 `packages/config/retention.json` 的 `mount` 改为你的数据盘挂载点，再按 [部署](#部署) 一节配置 cron。
+- 保持系统时间同步（`timedatectl status` 应显示 `System clock synchronized: yes`），15 分钟节点按 UTC 墙钟对齐。
+
+### macOS（Apple Silicon / Intel，未实测）
+
+以下命令在“终端”（默认 zsh）中执行。
+
+**1. 安装系统依赖**
+
+```bash
+xcode-select --install                                 # 提供 git 等命令行工具
+# 如未安装 Homebrew：
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install python@3.12 node
+python3.12 --version && node -v                        # Python ≥ 3.11；Node ≥ 22.12
+```
+
+也可以使用 python.org 的官方安装包。**安装后必须运行一次** `/Applications/Python 3.12/Install Certificates.command`，
+否则访问 Binance / CoinGecko 时 `urllib` 与 `websockets` 会报 `CERTIFICATE_VERIFY_FAILED`。Homebrew 版 Python 没有这个问题。
+
+**2. 克隆并安装依赖**
+
+```bash
+git clone https://github.com/shenchuangwl/AI-Crypto-Portfolio.git
+cd AI-Crypto-Portfolio
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cd apps/web && npm ci && npm run build && cd ../..
+```
+
+**3. 配置**
+
+```bash
+cp .env.example .env
+open -e .env                 # 用“文本编辑”填写 COINGECKO_API_KEY
+```
+
+**4. 初始化数据并启动**
+
+```bash
+source .venv/bin/activate
+bash scripts/smoke-p1-pipeline.sh
+START_SELECTION_LOOP=1 bash scripts/start-all.sh
+open http://127.0.0.1:18080/terminal
+```
+
+停止服务：`bash scripts/stop-all.sh`。
+
+**5. macOS 配置要点**
+
+- **bash 版本**：macOS 自带 bash 3.2。仓库脚本未使用 bash 4 语法（已逐一检查），请始终以 `bash scripts/xxx.sh` 调用。
+- **架构一致**：Apple Silicon 上请使用原生 arm64 的 Python 与 Node，不要在 Rosetta（x86_64）终端里安装依赖，否则会装错原生二进制。一旦混装，删除 `.venv` 和 `apps/web/node_modules` 后重新安装。
+- **防止休眠**：Mac 休眠会暂停 15 分钟循环。需要长时间运行时，在系统设置中关闭自动休眠，或另开一个终端执行 `caffeinate -dims`（按 Ctrl+C 结束）。
+- **防火墙**：默认只监听 `127.0.0.1`，不会触发弹窗。设置 `HOST=0.0.0.0` 后，系统可能询问是否允许 Python 接受传入连接。
+- **进程管理**：请使用 `start-all.sh` / `daemonize.py` 管理选币循环。`scripts/run-coin-selection-loop.sh stop` 中的孤儿进程清理依赖 Linux 的 `/proc`，在 macOS 上这一步不会生效。
+- **定时清理**：`prune_data.py` 可在 macOS 上运行（`os.statvfs` 可用）；定时可用 `crontab` 或 launchd（未验证）。不同 cron 实现对 `CRON_TZ` 的支持不同，建议直接按本地时间书写。
+- **Docker**：也可以安装 Docker Desktop for Mac，按 [部署](#部署) 中的 Compose 流程运行。
+
+### Windows
+
+Windows 有三种方式，按推荐程度排序：
+
+| 方式 | 适用 | 功能完整度 |
+|---|---|---|
+| **A. WSL2 + Ubuntu**（推荐） | 需要完整功能的开发与运行 | 完整 |
+| B. Docker Desktop | 习惯用容器、不想配 Python 环境 | 完整（`selection-loop` profile 未验证） |
+| C. 原生 PowerShell | 只做前端开发或界面预览 | **不含选币扫描** |
+
+#### 方式 A：WSL2 + Ubuntu（推荐）
+
+**1. 安装 WSL2**：在“以管理员身份运行”的 PowerShell 中执行，完成后按提示重启：
+
+```powershell
+wsl --install -d Ubuntu-24.04
+```
+
+重启后从开始菜单打开 “Ubuntu 24.04”，设置 Linux 用户名与密码。
+
+**2. 在 WSL 的 Ubuntu 终端中**，完整执行上文 [Ubuntu](#ubuntu2404-lts已实测) 的第 1–5 步。
+
+**3. 在 Windows 浏览器中**访问 <http://127.0.0.1:18080/terminal>。WSL2 默认把 `localhost` 端口转发到 Windows。
+
+WSL2 配置要点：
+
+- **把仓库克隆到 Linux 文件系统**（如 `~/AI-Crypto-Portfolio`），不要放在 `/mnt/c/...`。跨文件系统访问很慢，还会让 Vite 的文件监听与脚本可执行位出问题。
+- **在 WSL 内安装 Node**：执行 `which node npm`，应显示 `/usr/bin/...`，而不是 `/mnt/c/Program Files/...`（那是 Windows 版 Node，通过 PATH 互通混进来的）。
+- 如果 Windows 侧无法访问 `127.0.0.1:18080`，可尝试在 WSL 中以 `HOST=0.0.0.0 bash scripts/start-all.sh` 启动，或启用 WSL 的 mirrored 网络模式。
+- 主机休眠唤醒后，如发现 WSL 时间落后（`date -u` 与实际不符），可执行 `sudo hwclock -s` 同步，否则 15 分钟节点会错位。
+- 换行符：仓库的 `.gitattributes` 规定 `*.sh`、`*.py`、`*.yml` 始终以 LF 检出，即使在 Windows 侧克隆，脚本也不会因 CRLF 报 `$'\r': command not found`。
+
+#### 方式 B：Docker Desktop
+
+1. 安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，启用 WSL2 后端。大型企业使用 Docker Desktop 可能需要付费订阅，请留意其许可条款。
+2. 在宿主机构建前端（Windows 原生 Node 或 WSL 内均可）：
+
+   ```powershell
+   cd AI-Crypto-Portfolio\apps\web
+   npm ci
+   npm run build
+   cd ..\..
+   ```
+
+3. 在仓库根目录启动（建议加上 [部署](#部署) 一节中的 `docker-compose.local.yml`，只监听本机）：
+
+   ```powershell
+   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml up -d
+   docker compose -f deploy/docker-compose.yml --profile loop up -d    # 选币循环（未验证）
+   ```
+
+4. 浏览器访问 <http://127.0.0.1:18080/terminal>。
+
+仓库位于 WSL 文件系统中时，在 WSL 终端里执行 `docker compose` 性能更好。`selection-loop` 容器会读取仓库根目录的 `.env`，`COINGECKO_API_KEY` 在其中配置即可。
+
+#### 方式 C：原生 PowerShell（仅前端开发 / 界面预览）
+
+此方式可以运行 market-ingest、api-gateway 与前端，**不能运行选币扫描**（原因见 [平台支持矩阵](#平台支持矩阵)）。
+没有扫描数据时，选币榜显示 `contracts/examples` 中的样例快照，选币榜X/Y 返回 503；合约清单与 K 线使用 Binance 实时数据。
+
+**1. 安装系统依赖**（PowerShell，完成后重新打开窗口以刷新 PATH）：
+
+```powershell
+winget install -e --id Git.Git
+winget install -e --id Python.Python.3.12
+winget install -e --id OpenJS.NodeJS.LTS
+py -3.12 --version; node -v
+```
+
+**2. 克隆并安装依赖**：
+
+```powershell
+git clone https://github.com/shenchuangwl/AI-Crypto-Portfolio.git
+cd AI-Crypto-Portfolio
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+cd apps\web; npm ci; npm run build; cd ..\..
+```
+
+**3. 启动**（两个 PowerShell 窗口，均在仓库根目录执行，窗口保持打开）：
+
+```powershell
+# 窗口 1：market-ingest（:18100）
+$env:PYTHONUTF8 = "1"
+$env:PYTHONPATH = "services\market-ingest\src"
+.\.venv\Scripts\python.exe -m market_ingest
+```
+
+```powershell
+# 窗口 2：api-gateway + 前端（:18080）
+$env:PYTHONUTF8 = "1"
+.\.venv\Scripts\python.exe services\api-gateway\mock_server.py --host 127.0.0.1 --port 18080
+```
+
+浏览器访问 <http://127.0.0.1:18080/terminal>。在窗口中按 Ctrl+C 即可停止。
+
+**前端开发**：后端可以运行在 WSL2 或另一台机器上，只在 Windows 原生运行 Vite：
+
+```powershell
+cd apps\web
+$env:VITE_PROXY_TARGET = "http://127.0.0.1:18080"
+npm run dev                  # http://127.0.0.1:5173
+```
+
+Windows 原生配置要点：
+
+- **`PYTHONUTF8=1`**：部分脚本读取含中文的 JSON 时没有显式指定编码，控制台重定向输出也可能遇到中文编码问题。开启 Python UTF-8 模式可避免这类错误。可以写入用户环境变量：`[Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "User")`。
+- **环境变量写法**：PowerShell 用 `$env:NAME = "value"`，只对当前窗口有效；`PYTHONPATH` 在 Windows 上用分号 `;` 分隔多个路径。
+- **虚拟环境路径**是 `.venv\Scripts\python.exe`，不是 `.venv/bin/python`。
+- **`.env` 不会被自动读取**：原生方式没有经过 `daemonize.py`，网关与 ingest 需要的变量请用 `$env:` 设置。
+- **不要执行** `scripts\*.sh`、`start-all.sh`、`stop-all.sh` 或 `python scripts\daemonize.py`，它们只支持 POSIX 系统。
+- `python -m coin_selection` 会报 `ModuleNotFoundError: No module named 'fcntl'`，这是预期行为，请改用方式 A 或 B。
+- PowerShell 提示 `npm.ps1 cannot be loaded because running scripts is disabled` 时，执行 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`，或改用 `npm.cmd`。
+- Windows ARM64：Python 依赖有 `win_arm64` wheel，锁文件也包含 `win32-arm64-msvc` 原生二进制（未实测）。
+
+### 各系统配置要点对照
+
+| 配置项 | Ubuntu / WSL2 | macOS | Windows 原生 |
+|---|---|---|---|
+| `.env` 位置 | 仓库根目录 | 仓库根目录 | 仓库根目录（原生方式不会自动加载） |
+| `.env` 的读取方 | 扫描器 + `daemonize.py` 拉起的服务 | 同左 | 无，需用 `$env:` 设置 |
+| 端口 / 监听地址 | shell 中设置 `PORT`、`HOST` | 同左 | 用 `--host` / `--port` 参数 |
+| 虚拟环境 Python | `.venv/bin/python` | `.venv/bin/python` | `.venv\Scripts\python.exe` |
+| 启停方式 | `start-all.sh` / `stop-all.sh` | 同左 | 前台窗口 + Ctrl+C |
+| 数据目录 | `data/`（自动创建） | 同左 | `data\`（自动创建） |
+| 时间基准 | UTC（00:00 UTC 锚点，15 分钟节点） | 同左 | 同左 |
+| 定时清理 | cron + `run-retention.sh` | crontab / launchd（未验证） | 不支持（`run-retention.sh` 为 bash） |
+| 换行符 | LF | LF | `.gitattributes` 强制脚本为 LF |
+
+### 跨平台常见问题
+
+| 现象 | 平台 | 处理 |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'fcntl'` | Windows 原生 | 预期行为，选币扫描请在 WSL2 或 Docker 中运行 |
+| `SSL: CERTIFICATE_VERIFY_FAILED` | macOS（python.org 版） | 运行 `Install Certificates.command`，或改用 Homebrew 版 Python |
+| `Cannot find module '@rolldown/binding-…'` 或 `'@oxlint/binding-…'` | 全部 | 删除 `apps/web/node_modules` 后重新执行 `npm ci`；不要把在别的系统上安装的 `node_modules` 拷贝过来 |
+| `$'\r': command not found` | WSL / Git Bash | 用 `git config core.autocrlf input` 重新克隆；仓库的 `.gitattributes` 已对 `*.sh` 强制 LF |
+| `error: externally-managed-environment` | Ubuntu 24.04 / Homebrew Python | 不要直接用系统 `pip`，按上文先创建 `.venv` 再安装 |
+| `ensurepip is not available` | Ubuntu | `sudo apt install python3-venv`（或 `python3.12-venv`） |
+| Vite 报 Node 版本过低 | 全部 | 升级到 Node ≥ 20.19 或 ≥ 22.12 |
+| Windows 浏览器打不开 WSL 中的服务 | WSL2 | 见方式 A 的配置要点 |
+| `npm.ps1 cannot be loaded` | Windows PowerShell | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 或改用 `npm.cmd` |
 
 ## CoinGecko 配置（必读）
 
@@ -467,7 +796,7 @@ docker compose -f deploy/docker-compose.yml down                   # 停止
 | Docker `selection-loop` profile | ⏸ **未验证** |
 | 全量宇宙扫描 / 7×24 小时 15 分钟循环 | ⏸ **未验证**（耗时长、调用量大） |
 | 配置 CoinGecko Demo / Pro key 后的运行 | ⏸ **未验证**（仓库不提供 key） |
-| macOS / Windows | ⏸ **未验证** |
+| macOS / Windows | ⏸ **未实测**；已完成静态核查（依赖 wheel、模拟无 `fcntl` 导入、锁文件原生二进制），见 [跨平台部署指南](#跨平台部署指南) |
 
 ## 常见问题
 

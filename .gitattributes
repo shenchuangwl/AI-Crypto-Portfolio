@@ -1,0 +1,7 @@
+# 统一换行符：在 Windows 上检出（core.autocrlf=true）时，脚本也必须保持 LF，
+# 否则在 WSL / Git Bash / Linux 容器中运行会报 `$'\r': command not found`。
+* text=auto
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
