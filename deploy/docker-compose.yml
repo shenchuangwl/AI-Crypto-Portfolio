@@ -1,0 +1,63 @@
+# Internal / small-team deploy. Host :8080 is often taken — map 18080.
+services:
+  market-ingest:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ..:/app
+      - ingest-data:/app/data/market-ingest
+    environment:
+      HERMES_ROOT: /app
+      MARKET_INGEST_HOST: 0.0.0.0
+      MARKET_INGEST_PORT: "18100"
+      PYTHONPATH: /app/services/market-ingest/src
+    command: >
+      bash -lc "pip install -q -r requirements.txt &&
+      python -m market_ingest"
+    ports:
+      - "18100:18100"
+    restart: unless-stopped
+
+  gateway:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ..:/app
+      - selection-data:/app/data/coin-selection
+      - dmr-data:/app/data/dmr-adapter
+    environment:
+      HERMES_ROOT: /app
+      PORT: "18080"
+      MARKET_INGEST_URL: http://market-ingest:18100
+      API_GATEWAY_SERVE_WEB: "1"
+    command: >
+      bash -lc "python services/api-gateway/mock_server.py --host 0.0.0.0 --port 18080"
+    ports:
+      - "18080:18080"
+    depends_on:
+      - market-ingest
+    restart: unless-stopped
+
+  selection-loop:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ..:/app
+      - selection-data:/app/data/coin-selection
+      - dmr-data:/app/data/dmr-adapter
+    environment:
+      HERMES_ROOT: /app
+      MARKET_INGEST_URL: http://market-ingest:18100
+      PYTHONPATH: /app/services/coin-selection/src
+      # Never set SM_FAST here.
+    command: >
+      bash -lc "python -m coin_selection --loop --force"
+    depends_on:
+      - market-ingest
+    restart: unless-stopped
+    profiles: ["loop"]
+
+volumes:
+  ingest-data:
+  selection-data:
+  dmr-data:

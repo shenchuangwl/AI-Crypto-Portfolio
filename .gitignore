@@ -1,0 +1,49 @@
+# ===== 运行时 / 依赖 / 构建产物 =====
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+apps/web/node_modules/
+node_modules/
+apps/web/dist/
+apps/web/tests/.out/
+apps/web/tests/.build-*/
+*.tmp
+.DS_Store
+
+# ===== 凭据与本地环境配置（只提交 .env.example）=====
+.env
+.env.local
+**/.env
+*.pem
+*.key
+
+# ===== 运行数据（快照、账本、缓存、日志；体量大且可再生，不入库）=====
+data/
+data/smoke/
+graphify-out/
+*.tar.xz
+*.log
+*.pid
+*.pkl
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.bak
+
+# ===== 未随公开仓库发布的内容 =====
+# 独立的 DMR 执行层（第三方/私有，含实盘下单代码与本地配置），不随本仓库发布。
+# 可通过 DMR_ROOT 指向本地副本；未提供时 dmr-adapter / dmr-executor 以探测失败降级，不影响选币与前端。
+third_party/
+
+# 内部计划 / 方案 / 报告 / 研究材料（仅保留必要的使用与接口文档）
+doc/
+Markdown/
+.hermes/
+docs/*
+!docs/qualified-vs-confirmed-explained.md
+!docs/onlycoin-source-contract.md
+/binance-usdt-perp-auto-coin-selection-*.md
+/*报告*.md
+/*方案*.md
+/*计划*.md

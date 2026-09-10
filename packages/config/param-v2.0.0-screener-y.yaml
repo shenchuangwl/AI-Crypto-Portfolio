@@ -1,0 +1,375 @@
+# 「选币榜Y」参数快照 —— param-v2.0.0-screener-y
+#
+# ┌── 第四轮（当前）· 流通市值主导 ─────────────────────────────────────────┐
+# │ 状态：MCAP_DOMINANT · rule_revision y-v2.0.0-r3 · 生效边界 2026-09-03T00:00Z │
+# │                                                                          │
+# │ 三周期 A–F 流通市值等级（mcap_grade_30m/2h/6h）是《选币榜Y》准入 / 退出 /   │
+# │ 分区 / 优先级 / 排序的**第一裁决**。动能（S_MC、M、SS）只能否决或软化，     │
+# │ 永远不能把等级抬上去。216 天花板层由「默认关、生产不可达」升为**强制项**。  │
+# │                                                                          │
+# │ mcap_zone_mode != "on" 或缺 mcap_zone_authorization ⇒ Y **拒绝出数**，     │
+# │ **不是**退回 v1.4.0 行为。详见本文件 `mcap_dominance` 段。                 │
+# │                                                                          │
+# │ ⚠ 切换尚未执行：代码已就位、r3 已发布，但 boards[key=y].overrides.settings │
+# │   还没写授权键。在切换完成前 r2 仍然生效，Y 板面行为不变。                 │
+# │   切换步骤见 `mcap_dominance.cutover`。                                   │
+# └──────────────────────────────────────────────────────────────────────────┘
+#
+# 【历史】前三轮的状态（已被第四轮取代，保留供追溯）：
+#   TUNED_V2_MCAP_COMBO —— 层 A 门槛沿用 v1.4.0；Score 权重把最大结构权从 SS
+#   让给流通市值动量 S_MC（w_mcap=0.25 > w_mom=0.20）；216 组合天花板默认关。
+#   阶段 0 缺陷修复 + param_hash 契约 + 离线回放器；阶段 1 天花板层代码（默认关）；
+#   阶段 2 shadow 模式。**注意 S_MC 是日内 15m 市值路径动量分，不是三周期 A–F 等级**——
+#   两者不同指标，前者是辅助，后者是第四轮的主导指标，不得混为一谈。
+#
+# 事实源分工（改参数前务必看清）：
+#   - 代码默认值        services/coin-selection/src/coin_selection/scan.py SelectionSettings
+#                       / state_machine.py StateConfig —— **禁止为本任务改默认值**（主板底）
+#   - **生效的变体增量** packages/config/board-variants.json → boards[key=y].overrides
+#   - 人读快照（本文件） 只做记录；改 overrides 必须同步改这里，否则文档与生效值分叉
+#
+# 与 v1.4.0 的关系：结构上完全独立。改本文件 / 改 overrides 都**不会**影响
+# param-v1.4.0-staircase-confirm-dmr 与现有「选币榜」。权重分叉是预期，不是回归失败。
+#
+# 数据闭环：本版本的实时板面写在 data/coin-selection-y/，其复盘账本是
+# data/coin-selection-y/review/ledger.sqlite，在「复盘选币」里以规则版本 v2.0.0 出现。
+#
+# 执行层：本版本**不可执行**。DMR 候选写在 data/dmr-adapter-y/inbox（独立目录），
+# 且 param-v2.0.0-screener-y 不在 DMR_PARAM_WHITELIST 中 —— dmr-adapter 永远吃不到。
+version:
+  system: v1.2
+  parameter: param-v2.0.0-screener-y
+  indicator: g1g2g3g4-sm-staircase-dmr
+  derived_from: param-v1.4.0-staircase-confirm-dmr
+  status: TUNED_V2_MCAP_COMBO
+anchor: {core_utc: "00:00"}
+scan: {interval_min: 15, nodes_per_day: 96}
+gate1_liquidity:
+  hard_floor_usd: 3000000
+  periods_days: [6, 12, 26]
+  require_all_periods: true
+gate4_staircase:
+  status: PROVISIONAL_REPLACEABLE
+  f2_cap: 45
+  # 与 v1.4.0 同源：Gate4 只对 kline 缓存里已有的 K 线打分，回看根数由 gate2.KLINE_LIMIT 决定。
+  # 选币榜Y 是「投影」变体，复用同一轮扫描的 G1–G4 结果，因此这里必然与 v1.4.0 一致；
+  # 若将来要让 Y 用不同的回看根数，需要让它跑自己的 Gate（见 board-variants.json 的 projected 说明）。
+  lookback_bars_1h: 168
+state_machine:
+  watch: {enter: 45, exit: 40, streak: 2, dwell_min: 30}
+  qualified:
+    path_s: {score: 58, ss: 50, mom: 55, supply: true}
+    path_m: {score: 62, ss: 45, mom: 65, cons: 1.00, supply: true}
+    streak: 2
+    exit: 52
+  confirmed:
+    hard_staircase: true
+    path_s: {score: 66, ss: 50, mom: 60, cons: 0.67, dq: 60, supply: true}
+    path_m: disabled
+    streak: 2
+    dwell_min: 15
+    hold: {score: 56, ss: 50}
+  dmr_zone:
+    source: CONFIRMED
+    require: {score: 70, ss: 55, mom: 65, cons: 0.67, dq: 70, data_mode: LIVE}
+    top_k_unique_coins: 16
+  occupancy_target: [10, 40]  # 确认去重占用告警带；与主板共用，不进选币谓词
+  allow_skip_levels: false
+  sm_fast: false
+hierarchy:
+  display: "DMR ⊂ CONFIRMED ⊂ QUALIFIED"
+  qualified_display_includes: [QUALIFIED, CONFIRMED]
+  confirmed_display_includes: [CONFIRMED]
+  dmr_display_equals: executable_inbox
+scoring_weights:
+  # SelectionSettings 的 w_* 字段。生效入口是 board-variants.json 的 overrides.settings。
+  # 本版：w_mcap=0.25 > w_mom=0.20。合计 1.00。组合层不进 raw。
+  ss: 0.20
+  momentum: 0.20
+  liquidity: 0.15
+  mcap: 0.25
+  consistency: 0.10
+  rank: 0.05
+  risk: 0.05
+mcap_combo_zone:
+  # —— 上一轮（SOL/Grok 口径）的规则式天花板。保留为纯函数库与既有单测的事实源，
+  #    **不再由生产投影路径调用**（生产走下面的 mcap_zone 段，文档A §3.2 的唯一裁决版）。
+  enabled: false
+  mapping: packages/config/mcap_combo_216.json
+  census_per_side: {DMR: 12, 确定: 23, 符合: 29, 观察: 53, 淘汰: 99}
+  never_promote: true
+  combo_enters_raw_score: false
+  status: LEGACY_LIBRARY_ONLY
+
+mcap_zone:
+  # —— 216 组合天花板层（文档A §4 唯一裁决版；文档B 阶段 1–2）——
+  #
+  # 生效开关是 SelectionSettings.mcap_zone_mode（三态），布尔 enable_mcap_zone 是
+  # 它的向后兼容别名。**缺省 off = 字节级退化为现网**（红线第 14 条，单测 T11 钉住）。
+  #   off    恒等映射，Y 板面与现网逐字节相同
+  #   shadow 算并落库，但不改 state、不改 DMR 成员（单测 T14 逐节点比对）
+  #   on     最终分区 = min(状态机分区, 组合天花板)，只降不升
+  mode: "on"                  # 第四轮：主导层为强制项。YAML 1.1 里裸 on/off 会被解析成布尔，必须加引号
+  # 生效入口仍是 boards[key=y].overrides.settings.mcap_zone_mode（本文件只做记录）。
+  # mode != "on" 或缺授权令牌 ⇒ Y 拒绝出数，**不是**退回现网行为。
+  direction_ladder:           # 冻结：由 A–F 序数决定，不是可调参数
+    A: 1
+    B: 0.6667                 # +2/3
+    C: 0.3333                 # +1/3
+    D: -0.3333
+    E: -0.6667
+    F: -1
+  timeframe_weights: {"6h": 1.5, "2h": 0.9, "30m": 0.6}   # 5:3:2，Σ=3 ⇒ Z ∈ [-3, +3]
+  cuts:                       # 本层**唯一**可调参数【建议参数·待回测】
+    dmr:        2.1
+    confirmed:  1.5
+    qualified:  0.8
+    watch:     -0.5
+  census_per_side: {DMR: 13, CONFIRMED: 22, QUALIFIED: 32, WATCH: 72, ELIMINATED: 77}
+  abstain_demote: true        # grade=None → 降一级、在观察止步（文档A §3.4）
+  monotone: DEMOTE_ONLY       # 只降不升，穷举 2160 例单测钉住（T10）
+  generator: scripts/mcap_combo_zones.py
+  implementation: services/coin-selection/src/coin_selection/mcap_zone.py
+
+# —— 以下两段已于第四轮实现并接线，见本文件 `mcap_dominance` 段 ——
+# 【历史记录】第二轮写下这两段时**没有对应的 SelectionSettings 字段、也没有任何
+# 代码读取**，它们只是文档（静态审查报告 §7-P11 记录了这个缺口）。
+# 第四轮已由 coin_selection.mcap_dominance 实现并消费，可调项落在
+# boards[key=y].overrides.settings 的 mcap_p*/mcap_xc_* 键（SETTINGS_FIELD_MAP）。
+dimension_predicates:         # 维度二服务维度三（文档A §5.2）
+  status: IMPLEMENTED_v2.0.0-r3
+  impl: coin_selection.mcap_dominance.resolve_dominance
+  p1_confirm: {mom_gte: 60, cons_eq: 1.0}
+  p2_soften:  {z_gte: 1.5, mom_lt: 55, action: DEMOTE_ONE_LEVEL}
+  p3_veto:    {z_gte: 1.5, mom_opposite_gte: 70, cons_opposite_eq: 1.0, action: CAP_AT_WATCH}
+ss_mcap_crosscheck:           # SS × 216 组合互印证（文档A §6）
+  status: IMPLEMENTED_v2.0.0-r3
+  impl: coin_selection.mcap_dominance.resolve_dominance
+  aligned:    {ss_gte: 50, z_gte: 0.8, action: NONE}      # 一致**不加分**
+  divergent:  {ss_gte: 55, z_lte: -0.8, action: CAP_AT_QUALIFIED}
+
+consistency:                  # 一致性契约（文档B §3.1）
+  param_hash:
+    schema: param-fingerprint-v1
+    impl: coin_selection.board_variants.param_fingerprint
+    written_to: [snapshot.meta.param_hash, dmr_inbox.param_hash, ledger.trades.param_hash]
+    reject_on_mismatch: true  # 混参的账本不可比，《复盘选币》必须显示「参数已变更，历史不可比」
+  replayer: scripts/replay_rescore.py
+  replay_source: data/coin-selection/snapshots/*.full.json   # 不用 Y 板面（缺陷 N3）
+  research_out: data/research/**                            # 白名单，绝不写现网目录
+
+occupancy_band:
+  # —— 确认区去重占用的展示 / 告警目标带 ——
+  #
+  # 【为什么单独登记】这两项在 StateConfig 里、可以通过
+  # boards[key=y].overrides.state_config 修改，但**不进 config_hash / param_hash**
+  # （两处身份白名单都是显式元组，没收它们）。也就是说改它们**不留身份痕迹**，
+  # 历史数据不会因此变得不可比 —— 这是刻意的，因为它们不改变任何一行的选币结果。
+  # 代价是后来者会误以为「改了会被身份追踪到」。本段就是那份人读登记：
+  # **改 overrides.state_config 的 occupancy_* 必须同步改这里**。
+  #
+  # 【三处必须一致】
+  #   services/coin-selection/src/coin_selection/state_machine.py  StateConfig（权威默认值）
+  #   apps/web/src/shared/config/occupancy.ts                      前端镜像
+  #   本段                                                          人读登记
+  lo: 10
+  hi: 40
+  enters_identity_hash: false   # 不进 config_hash / param_hash
+  affects_selection: false      # 不进任何选币谓词，只驱动告警与页头颜色
+  drives: [CONFIRM_UNDERFILLED, CONFIRM_OVERFLOW, 页头目标带文案与颜色]
+  # 上界 40 的依据（实测，快照全窗口，两个体制分开统计）：
+  #   主导层关闭段  n=1748  中位 27  p75 46  p90 56  p95 61  p99 82  max 104
+  #   主导层生效段  n= 238  中位 16  p75 21  p90 27  p95 30  p99 31  max  32
+  rationale: >-
+    40 是**体制回退探测器**，不是逐节点溢出报警。主导层生效段 max=32，
+    所以正常运行时它不触发 —— 这是刻意的。一旦占用回到 40 以上，说明 216 主导层
+    实质失效（映射降级为 off、授权丢失、或天花板不再压制），板面退回关闭段的量级，
+    那是需要人介入的体制事件。不取 p95=30 做上界，是因为那会把生效段 3.8% 的
+    正常节点报成异常，报警会被训练成噪音。
+    下界 10 沿用改造前的值：DMR Top-K=16，占用长期低于 10 意味着 DMR 池填不满。
+  known_deviation: >-
+    文档A(Opus5) §2.3 的守恒约束「确认侧占用 <= 24.49 × 1.5 = 36.7」被越过 3.3。
+    该约束标定于**主导层关闭**的样本（当时中位 27 / max 104，本就长期越界），
+    用它约束生效段不成立。要恢复该口径需在生效段样本上重新标定，不得直接套旧基数。
+
+constants_tech_debt:          # 文档A §2.5：登记为技术债，本轮不动
+  rank_velocity: {status: CONSTANT_50,  note: "not a live metric"}
+  risk:          {status: CONSTANT_100, note: "not a live metric"}
+  regime:        {status: CONSTANT_0_5, note: "scan.py hardcoded; do not enable v1.2 §33.3 caps"}
+
+stage3_candidate:
+  # —— 【未生效】文档A 附录 B 的阶段 3 候选值。**不是生效值**，只作记录。——
+  #
+  # 文档B §8 阶段 3 的前置条件当前一条都不满足（窗口未满 31 天、样本外未验、
+  # walk-forward 未跑）。要推上生效值，必须把下面这组数写进
+  # board-variants.json 的 boards[key=y].overrides.state_config，并与本文件同一次提交。
+  # 门是否已过，跑 `python3 scripts/check_y_readout.py --stage-gates`。
+  status: NOT_ACTIVE
+  gate: "scripts/check_y_readout.py --stage-gates"
+  ready_after_utc: "2026-09-15"      # 权重/阈值层满 31 天
+  recalibration: quantile-aligned    # 由 replay_rescore.py --recalibrate-thresholds 现算，禁止手填
+  state_config:
+    enter_watch:       45.53
+    exit_watch:        40.41
+    exit_qualified:    52.67
+    enter_qualified:   58.78
+    enter_qualified_m: 62.84
+    exit_confirmed:    56.76
+    enter_confirmed:   66.82
+    dmr_score:         70.89
+  note: >-
+    本轮实测（scripts/replay_rescore.py --exp E2a --recalibrate-thresholds quantile）
+    重算出的分位对齐值，与文档A §2.3 的 45.53/40.41/52.69/58.82/62.89/56.79/66.88/70.94
+    最大差 0.06。SS / M / C / DQ 类阈值一律不动 —— 权重变更只改变 Score 的量纲。
+
+# ===========================================================================
+# 第三轮 · ChatGpt_SOL5.6 落地（本段为**新增记录**，未改任何生效值）
+# ===========================================================================
+#
+# 依据：
+#   docs/ChatGpt_SOL5.6_新五区币种选入标准报告_升级版_v2.0.0.md
+#   docs/ChatGpt_SOL5.6_《选币榜Y》与《复盘选币》栏目基于新五区币种选入标准的优化
+#        现网新规则体系之下的一致性与可回测流程的整体设计流程方案计划.md
+#
+# 与上面 `mcap_combo_zone` / `mcap_zone` 两段的关系（择优裁决，见验收报告 §4）：
+#   * 第一轮 Hermes_Grok4.6 的 mcap_combo.py 已经实现了文档A §9.1/§9.2/§9.4 的全部
+#     功能字段，本轮逐行核对与文档A 附录A **零差异**，因此**直接复用它做生成器**；
+#   * 第二轮 Claude_Opus5 的 mcap_zone.py 是另一套切点式天花板（每侧 13/22/32/72/77），
+#     与文档A 裁决的 12/23/29/53/99 不同口径 —— 本轮按文档A §4.1 的裁决顺序
+#     （本任务明确目标 > 运行时事实 > 旧报告）以 ChatGpt_SOL5.6 为准，
+#     mcap_zone 降为**消融基线**，通过 `mcap_ruleset: opus5` 才会被选用。
+sol56_effective_zone:
+  status: MANDATORY_v2.0.0-r3        # 第四轮：由「接线但默认关」升为强制生效项
+  ruleset: sol5.6                    # SelectionSettings.mcap_ruleset；另一取值 opus5（消融基线）
+  mcap_mapping_version: mcap-216-v2.0.0-r1
+  mapping_hash: sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689
+  mapping_file: packages/config/mcap-216-v2.0.0-r1.json
+  generator: services/coin-selection/src/coin_selection/mcap_mapping.py
+  kernel: services/coin-selection/src/coin_selection/mcap_effective.py
+  z10: "Z10 = 2·q(30m) + 3·q(2h) + 5·q(6h)；q(A..F) = +3/+2/+1/-1/-2/-3"   # 文档A §9.1
+  priority_abs_z10: {p1_lt: 3, p2_lt: 8, p3_lt: 16, p4_lt: 24, p5_gte: 24} # 28/54/74/46/14
+  resonance_k: {same_all: 100, s6_eq_s2: 70, s6_eq_s30: 40, s2_eq_s30: 10} # 各 54 组
+  ceiling_bounds: {dmr_z10_gte: 18, confirmed_z10_gte: 10, qualified_z10_gte: 5}  # 文档A §9.4【待回测】
+  census_per_side: {DMR: 12, CONFIRMED: 23, QUALIFIED: 29, WATCH: 53, ELIMINATED: 99}
+  census_canonical: {DMR: 24, CONFIRMED: 46, QUALIFIED: 58, WATCH: 70, ELIMINATED: 18}
+  merge: "effective_rank = max(base_rank, ceiling_rank)"   # 文档A §5：只降不升
+  null_fallback_ceiling: WATCH        # 文档A §9.5：任一 grade=null → 保守封到观察
+  bypass_states: [NONE, DATA_INSUFFICIENT, LOW_CONFIDENCE]  # 文档A §5：原样旁路，不进五区
+  dmr_precondition: "base_state == CONFIRMED AND direction ceiling == DMR"  # 文档A §10.2
+
+# ===========================================================================
+# 第四轮 · 流通市值主导层（本轮改造 —— 这一段是**生效值**，不是记录）
+# ===========================================================================
+#
+# 裁决：三周期 A–F 流通市值等级（mcap_grade_30m/2h/6h）成为《选币榜Y》
+# 准入 / 退出 / 分区 / 优先级 / 排序的**第一裁决**；动能（含 S_MC、M、SS）
+# 降为只能**否决或软化**的辅助条件，永远不能把等级抬上去。
+#
+# 与前三轮最重要的区别：216 天花板层不再是「已实现、默认关、生产不可达」，
+# 而是**强制项**。mcap_zone_mode != "on" 或缺授权令牌时，Y **拒绝出数**
+# （McapDominanceError → project_secondary_boards 记 status=refused，
+#  快照 / inbox / 账本一个字节都不写），绝不降级为 v1.4.0 行为。
+mcap_dominance:
+  status: MANDATORY_PENDING_CUTOVER     # 代码已就位；生效边界 2026-09-03T00:00:00Z
+  impl: services/coin-selection/src/coin_selection/mcap_dominance.py
+  tests: services/coin-selection/tests/test_mcap_dominance.py   # 32 项，含 3 条不变量
+  rule_revision: y-v2.0.0-r3
+  authorization_token: y-v2.0.0-r3-mcap-dominant   # 必须逐字节相等，进 config_hash
+  # —— 三条不变量（单测钉住）——
+  invariants:
+    INV-1: "单调性：final_rank >= effective_rank >= base_rank，本层只降不升"
+    INV-2: "排序上界：RankKey <= Score/100"
+    INV-3: "主导性：排序元组前四键全部是流通市值维度（分区/天花板/Z/K）"
+  # —— 维度谓词（文档A §5.2），优先级 P3 > P2 > P1 ——
+  dimension_predicates:
+    p1_confirm: {mom_gte: 60, cons_eq: 1.0, action: TABLE_VALUE_NO_BONUS}
+    p2_soften:  {z_gte: 1.5, mom_lt: 55, action: DEMOTE_ONE_LEVEL}
+    p3_veto:    {z_gte: 1.5, mom_opposite_gte: 70, cons_opposite_eq: 1.0, action: CAP_AT_WATCH}
+  # —— SS × 流通市值互印证（文档A §6）——
+  ss_mcap_crosscheck:
+    aligned:   {ss_gte: 50, z_gte: 0.8, action: NONE}              # 一致**不加分**
+    divergent: {ss_gte: 55, z_lte: -0.8, action: CAP_AT_QUALIFIED}
+  # —— 排序权重体系（文档A §5.6；W_final 为本轮补齐的定义）——
+  ranking:
+    w_base: {DMR: 1.00, CONFIRMED: 0.85, QUALIFIED: 0.70, WATCH: 0.40, ELIMINATED: 0.00}
+    w_prio: "0.60 + 0.10 × priority(1..5)  ⇒ 0.70/0.80/0.90/1.00/1.10"
+    w_k:    {100: 1.10, 70: 1.00, 40: 0.85, 10: 0.65}
+    w_combo: "W_base × W_prio × W_K   （理论最大 1.00×1.10×1.10 = 1.210 = 归一化分母）"
+    w_final: "W_combo × clamp(Π动态因子, 0.30, 1.00)   ⇒ 恒有 W_final <= W_combo"
+    dynamic_factors: {p2_soften: 0.85, p3_veto: 0.50, divergent: 0.80, incomplete: 0.70}
+    rank_key: "(Score/100) × (W_final / 1.210)"
+    order: "(分区, 天花板等级, -Z, -K, -RankKey, -Score, -SS, -M, symbol)"
+    note: >-
+      前四键全部是流通市值维度；Score / SS / M 降为次级裁决；symbol 只做稳定兜底。
+      动态因子全部 <= 1.0 —— 动能只能下调排序权重，这是「动能不得逆转市值主导」的机器表达。
+  # —— 切换流程（必须在 00:00 UTC 边界原子完成，文档B §3.3）——
+  cutover:
+    boundary_utc: "2026-09-03T00:00:00Z"
+    steps:
+      - "停 coin-selection loop"
+      - "部署本轮代码，更新 data/coin-selection/deployed-commit.txt"
+      - "把 mcap_zone_mode:'on' 与 mcap_zone_authorization 写进 boards[key=y].overrides.settings"
+      - "生效前把 y-v2.0.0-r3.json 的 code_commit 修订为真实部署提交"
+      - "重启 loop"
+    rollback: >-
+      清空 boards[key=y].overrides.settings 的两个主导层键 → Y 立刻回到「拒绝出数」的
+      fail-closed 态（**不是**回到 v1.4.0 行为）。要让 Y 重新出数必须重新授权。
+  identity_at_cutover:
+    config_hash: "sha256:034fe9f685841986b22e6931a525f8a7e3cdb0d0d878556ef7e20849bd06c5e1"
+    param_hash: pf1_cc81ad3ac5397f17     # 由 pf1_1b44aba95de8ffe8 变更，账本自此进入新可比段
+    mcap_mapping_version: mcap-216-v2.0.0-r1
+    mapping_hash: sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689
+
+rule_identity:                        # 文档A §13.1 / 文档B §3.1–§3.2
+  manifest_file: packages/config/rule-manifests/y-v2.0.0-r3.json
+  schema: contracts/json-schema/rule-manifest.schema.json
+  rule_revision: y-v2.0.0-r3          # r1/r2 保留为历史，只增不改
+  config_hash: "解析并补默认值后的有效配置做 JCS SHA-256；不是对本 YAML 文本取哈希"
+  asset_mapping_version: cg-map       # 现网 mapping_version 的无歧义新名
+  data_contract_version: raw-input-contract-v1
+  universe_policy_version: binance-usdt-perp-v1
+  code_commit: data/coin-selection/deployed-commit.txt   # 由部署提交钉定（rule_manifest.resolve_code_commit 第 2 级）
+  effective_from_utc: "2026-09-03T00:00:00Z"  # r3 生效边界；只允许 00:00 UTC 周期边界（文档B §3.3）
+  param_hash_note: >-
+    param_hash（pf1_*）是第二轮的粗粒度参数指纹，为账本连续性**刻意保持不变**；
+    config_hash 是本轮新增的完整有效配置身份。两者并存，不互为别名。
+
+feature_flags:                        # 文档A §17.2 / 文档B §5.3；只在 00:00 UTC 边界生效
+  ENABLE_MCAP_ZONE:           true    # 由 mcap_zone_mode ∈ {shadow,on} 推导
+  ENABLE_MCAP_EFFECTIVE_ZONE: true    # 由 mcap_zone_mode == on 推导
+  ENABLE_TARGET_WEIGHTS:      true    # 由已解析权重 == 目标七权重推导
+  note: >-
+    文档A §17.2 规定三个开关默认 0，但本文件的职责是**如实记录现网事实**，
+    不是复述文档默认值。三个开关当前都读作 true：
+    ENABLE_TARGET_WEIGHTS —— 第一轮已把目标七权重写进 boards[key=y].overrides.settings
+    并现网生效（分叉点 20260831-089 → 090）；
+    ENABLE_MCAP_ZONE / ENABLE_MCAP_EFFECTIVE_ZONE —— 22b0e51 起
+    boards[key=y].overrides.settings.mcap_zone_mode="on" 且带授权令牌，
+    三周期流通市值主导层已是生产态（rule_revision y-v2.0.0-r3）。
+    这两项在 22b0e51 之前读作 false，当时与现网一致；此处随现网订正。
+    差异已在第三轮验收报告 §4 与 §12 登记。
+
+pit_clock:                            # 文档A §7.2 / 文档B §12【上线阻断】
+  filter: "bar.close_time <= decision_time_utc"
+  impl: services/coin-selection/src/coin_selection/pit.py
+  applies_to: [gate2.run_gate2, mcap_timeframe.run_mcap_timeframes]
+  note: >-
+    改造前 Gate2 保留正在形成的最后一根 1h K 线，而 mcap_timeframe 无条件丢弃最后一根，
+    两条路径读的是两个不同时点的序列。现已统一到同一个过滤器。
+
+execution_guard:                      # 文档A §14 / 文档B §18.6【P0】
+  predicate: contracts/python/execution_guard.py::execution_allowed
+  used_by: [services/dmr-adapter/.../adapter.py, services/dmr-executor/.../paper.py]
+  allow_only: 'board_key == "main" AND dmr_executable is True AND consumable_by_dmr is True'
+  required_identity: [board_key, dmr_executable, consumable_by_dmr, parameter_version,
+                      rule_revision, config_hash, mcap_mapping_version, mapping_hash, code_commit]
+  contract_unavailable: REJECT_WHOLE_BATCH
+  envelope: dmr-accepted-envelope-v1   # 含 batch identity + candidate + payload_hash
+  note: "环境白名单只能进一步收紧，不能替代或放宽本谓词。Y 永久不可执行。"
+
+coverage:                             # 文档A §18.1 / 文档B §4.2 §11.2
+  impl: services/coin-selection/src/coin_selection/coverage.py
+  outputs: [expected_nodes, present_nodes, missing_scan_ids, duplicate_scan_ids,
+            continuous_segments, coverage_ratio, largest_gap_nodes, span_days]
+  retention_cap_days: 31              # 同时约束 API / UI / 自定义窗口 / compare / cycles
+  note: "改造前 cycles 上限写的是 366，且 coverage 按 episode 首末聚合，15 个缺失节点仍报 1.0。"

@@ -1,0 +1,54 @@
+.onlycoin-panel { min-width:0; border:1px solid #176047; border-radius:12px; padding:14px; margin:10px 0; background:linear-gradient(120deg,#10201b,var(--bg-1,#11161d) 65%); color:var(--text-0,#e2e5e9); }
+.onlycoin-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.onlycoin-panel h2 { margin:4px 0; font-size:17px; line-height:24px; font-weight:650; }
+.onlycoin-panel h2 strong { color:#00d395; }
+.onlycoin-panel h2 small { margin-left:8px; font-size:11px; font-weight:400; color:var(--text-1,#84909f); }
+.onlycoin-panel p { margin:6px 0; font-size:12px; line-height:18px; color:var(--text-1,#84909f); }
+.onlycoin-actions,.onlycoin-review-tabs { display:flex; flex-wrap:wrap; gap:6px; }
+.onlycoin-panel button,.onlycoin-review-tabs button { min-height:30px; padding:5px 12px; border:1px solid var(--border,#303a46); border-radius:6px; background:var(--bg-2,#1c2129); color:var(--text-0,#e2e5e9); font:inherit; font-size:12px; cursor:pointer; }
+.onlycoin-panel button:hover,.onlycoin-review-tabs button:hover { border-color:#30866b; background:#18352b; }
+.onlycoin-panel button[aria-pressed="true"],.onlycoin-review-tabs button[aria-pressed="true"] { color:#45dfad; border-color:#24805d; background:#12372a; }
+.onlycoin-panel button:disabled { opacity:.5; cursor:not-allowed; }
+.onlycoin-panel :is(button,input,summary,a):focus-visible { outline:2px solid #45dfad; outline-offset:2px; }
+.onlycoin-lists { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; min-width:0; }
+.onlycoin-lists > div { min-width:0; }
+.onlycoin-lists h3 { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:0 0 7px; font-size:12px; line-height:18px; color:var(--text-1,#84909f); }
+.onlycoin-lists h3 b { margin-left:5px; color:var(--text-0,#e2e5e9); font-variant-numeric:tabular-nums; }
+.onlycoin-lists > div:last-child h3 { color:#45dfad; }
+.onlycoin-lists small { font-size:10px; font-weight:400; color:var(--text-1,#84909f); }
+.onlycoin-lists ul { list-style:none; padding:0 4px 0 0; margin:0; max-height:200px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#36483f transparent; display:flex; flex-direction:column; gap:4px; }
+.onlycoin-lists li { box-sizing:border-box; flex:0 0 30px; min-height:30px; height:30px; display:grid; grid-template-columns:minmax(0,1fr) auto 36px; align-items:center; gap:8px; padding:0 8px; border-radius:6px; background:var(--bg-2,#1c2129); font-size:12px; }
+.onlycoin-lists li:hover { background:#25312e; }
+.onlycoin-lists li a { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650; color:var(--text-0,#e2e5e9); text-decoration:none; }
+.onlycoin-time { color:#c3ad6a; font-size:11px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.onlycoin-lists details { position:relative; font-size:10px; color:var(--text-1,#84909f); }
+.onlycoin-panel summary { cursor:pointer; }
+.onlycoin-lists details[open] pre { position:fixed; z-index:50; inset:20% 10%; overflow:auto; background:#101820; padding:20px; border:1px solid #536879; border-radius:8px; box-shadow:0 12px 48px #0009; }
+.onlycoin-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; }
+.onlycoin-coverage { margin-top:10px; font-size:11px; color:var(--text-1,#84909f); }
+.onlycoin-source { border-top:1px solid #294037; padding-top:10px; margin-top:10px; }
+.onlycoin-source-summary { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:11px; color:var(--text-1,#84909f); }
+.onlycoin-source-summary b { color:var(--text-0,#e2e5e9); font-size:12px; }
+.onlycoin-status { border:1px solid #3b4c43; border-radius:4px; padding:2px 7px; font-size:10px; background:#1b2822; }
+.onlycoin-manage { margin-left:auto; color:#76ac97; }
+.onlycoin-source-body { padding-top:8px; }
+.onlycoin-form { display:flex; align-items:flex-end; flex-wrap:wrap; gap:10px; margin:10px 0; }
+.onlycoin-panel label { display:inline-flex; flex-direction:column; gap:5px; font-size:11px; color:var(--text-1,#84909f); margin-right:8px; }
+.onlycoin-panel input { box-sizing:border-box; height:32px; min-width:0; max-width:100%; padding:6px 9px; border:1px solid var(--border,#344050); border-radius:6px; background:var(--bg-2,#1c2129); color:var(--text-0,#e2e5e9); color-scheme:dark; }
+.onlycoin-source small { display:block; color:var(--text-1,#84909f); font-size:11px; }
+.onlycoin-review-tabs { padding:10px 14px; margin:0; border-bottom:1px solid var(--border,#303a46); background:var(--bg-1,#11161d); }
+.onlycoin-review-tabs button { font-size:13px; line-height:18px; white-space:nowrap; }
+.onlycoin-review-panel { margin:12px 14px; font-family:inherit; }
+.onlycoin-version { padding:4px 9px; border:1px solid #285a45; border-radius:5px; color:#8ddbb9; font-size:11px; white-space:nowrap; }
+.onlycoin-query { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin:14px 0 10px; padding:12px; border:1px solid #293e35; border-radius:8px; background:#111c18; }
+.onlycoin-query label { margin:0; gap:7px; color:#b4c2ba; font-size:12px; }
+.onlycoin-query input { width:230px; height:34px; font:inherit; font-size:13px; font-variant-numeric:tabular-nums; }
+.onlycoin-query label:nth-child(2) input { width:280px; }
+.onlycoin-query .onlycoin-query-button { min-height:34px; color:#b1f1d5; border-color:#287959; background:#183d2d; font-size:12px; white-space:nowrap; }
+.onlycoin-query .onlycoin-query-button:disabled { opacity:1; background:#202b26; color:#94a59c; border-color:#35483d; }
+.onlycoin-review-help { margin:8px 0 12px; color:#a1b4a9; }
+.onlycoin-feedback { margin:12px 0; padding:14px; border:1px dashed #3a5145; border-radius:7px; color:#aebeb4; background:#131e19; font-size:12px; line-height:20px; }
+.onlycoin-panel .onlycoin-feedback-error { color:#f3a2a2; border-color:#704246; }
+@media(max-width:640px) { .onlycoin-review-panel { margin:10px; } .onlycoin-query { padding:10px; } .onlycoin-query label { width:100%; } .onlycoin-query input,.onlycoin-query label:nth-child(2) input { width:100%; } .onlycoin-query-button { width:100%; } }
+@media(max-width:1000px) { .onlycoin-lists li { grid-template-columns:minmax(0,1fr) auto; gap:5px; } .onlycoin-lists li details { display:none; } }
+@media(max-width:640px) { .onlycoin-panel { padding:10px; } .onlycoin-lists { grid-template-columns:repeat(3,minmax(220px,1fr)); overflow-x:auto; padding-bottom:5px; } .onlycoin-heading { gap:8px; } .onlycoin-form label { width:100%; margin:0; } }

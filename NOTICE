@@ -1,0 +1,20 @@
+Hermes Binance USDT-M selection workbench
+========================================
+
+This product uses TradingView Lightweight Charts
+(https://github.com/tradingview/lightweight-charts), licensed under Apache-2.0.
+
+TradingView Lightweight Charts requires a visible attribution on every page
+that renders a chart, including a link to https://www.tradingview.com.
+See apps/web footer and https://github.com/tradingview/lightweight-charts/blob/master/README.md.
+
+KLineChart (https://github.com/klinecharts/KLineChart) is Apache-2.0.
+dockview (https://github.com/mathuo/dockview) is MIT — this product uses the
+community package only, never dockview-enterprise.
+
+Cryptofeed (optional later realtime path) requires attribution to Bryant Moscon.
+
+CoinGecko market-cap / circulating-supply data: display "Powered by CoinGecko"
+when those fields are shown.
+
+Binance market data is used under Binance API Terms. Do not resell the live feed.

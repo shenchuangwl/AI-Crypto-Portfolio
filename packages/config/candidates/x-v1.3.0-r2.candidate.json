@@ -1,0 +1,35 @@
+{
+  "board_key": "x",
+  "parameter_version": "param-v1.3.0-screener-x",
+  "rule_revision": "x-v1.3.0-r2",
+  "config_hash": "sha256:6ec0fa8a04c9814c9f4121775b454caedc8bcd58e9e9965756bc606b7b28a71f",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "REPLACE_WITH_DEPLOYED_COMMIT",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "REPLACE_AT_SWITCH_TIME",
+  "effective_from_scan_id": "REPLACE_AT_SWITCH_TIME",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_cc6b176b336be60b",
+  "notes": [
+    "候选件，尚未获得生产切换授权；**刻意不放在 packages/config/rule-manifests/**。",
+    "rule_manifest.list_manifests 对该目录做 glob(\"*.json\") 且 effective_from_scan_id <= scan_id 即自动生效，",
+    "把候选放进去等于未经授权直接上线。切换获批后再复制过去并填三个 REPLACE_ 占位。",
+    "语义：四区改用历史 v1.3 双通道/粘滞（确认 PATH_M 70/45/70/C=1；hold 析取 56/(45 或 C1&M62)；",
+    "取消 v1.4 的 SS<50 立即降级）；DMR 改由「确认 ∩ 基础消息条件 ∩ 216 方向 ceiling==DMR」派生。",
+    "216 只约束 DMR：mcap_zone_mode 保持 shadow，四区归属/排序/入区时刻零触碰（已实测 326 节点差异 0）。",
+    "不覆盖已发布的 x-v1.3.0-r1；旧克隆段账本原样保留，新段以本 revision 与新 param_hash 区分。",
+    "仍不可执行：dmr_executable=false，X 机器版本不在 DEFAULT_PARAM_WHITELIST / DMR_PARAM_WHITELIST。",
+    "【已裁决 2026-09-06】接受「v1.3 阈值 + 168 根输入」：G4 回看窗口仍是 168 根，不是历史 v1.3 的 48 根。本 revision 因此是现代工程适配，不声称逐字复原当年语义。",
+    "【已裁决 2026-09-06】接受 Top-K 截断：216 合格集（真实节点 20–38）大于 dmr_top_k=16，最终 DMR 成员由 Score/SS/M 排序截断决定；meta.dmr.truncated 常态非 0 属预期。"
+  ]
+}

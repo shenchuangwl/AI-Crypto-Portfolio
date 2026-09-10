@@ -1,0 +1,24 @@
+{
+  "$comment": [
+    "切换到 rank216 时要写进 board-variants.json 的 boards[key=x].overrides 的片段。",
+    "与 x-adapted 的唯一差别：dmr_selection_mode 由 confirmed-basic-216-v1.3",
+    "改为 confirmed-basic-rank216-v1.3 —— 216 退出 DMR 准入，改做排序权重。",
+    "",
+    "依据（staging 2139 节点 / 39,329 笔实测）：",
+    "  方向天花板做准入是**反向指标**：确认区 ceil=DMR 合计 -15.1%，",
+    "  ceil=WATCH 合计 +188.8%；用它做准入等于在筛掉好票。",
+    "  而 216 里的三周期全同向是正向的：AAA/FFF 合计 +161.0%、盈亏比 3.21，",
+    "  混合组合合计 -477.7%。因此只把全同向提为排序首键。",
+    "",
+    "四区仍是历史 v1.3（selection_semantics 不变），mcap_zone_mode 仍是 shadow。"
+  ],
+  "overrides": {
+    "settings": {
+      "mcap_zone_mode": "shadow",
+      "dmr_selection_mode": "confirmed-basic-rank216-v1.3"
+    },
+    "state_config": {
+      "selection_semantics": "dual-path-v1.3"
+    }
+  }
+}

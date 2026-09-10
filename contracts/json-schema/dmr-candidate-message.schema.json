@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/schemas/dmr-candidate-message.schema.json",
+  "title": "DmrCandidateMessage",
+  "description": "Design v1.2 §39 DMR execution-layer candidate message. One direction per (anchor_date, scan_id, symbol).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "message_id",
+    "system_version",
+    "anchor_date",
+    "scan_id",
+    "scan_sequence",
+    "scan_timestamp_utc",
+    "generated_at_utc",
+    "expires_at_utc",
+    "symbol",
+    "underlying_asset",
+    "canonical_asset_id",
+    "contract_multiplier",
+    "direction",
+    "state",
+    "state_duration_minutes",
+    "direction_confidence",
+    "total_score",
+    "liquidity_score",
+    "momentum_score",
+    "market_cap_momentum_score",
+    "staircase_score",
+    "trend_consistency_score",
+    "rank_velocity_score",
+    "risk_score",
+    "data_confidence",
+    "market_rank",
+    "tier_rank",
+    "market_cap_tier",
+    "coingecko_coin_id",
+    "circulating_supply",
+    "market_cap_calculated",
+    "market_cap_coingecko",
+    "risk_flags",
+    "data_mode",
+    "reason_codes",
+    "indicator_version",
+    "parameter_version",
+    "mapping_version",
+    "data_version"
+  ],
+  "properties": {
+    "message_id": {
+      "type": "string",
+      "description": "sha1(anchor_date|scan_id|symbol|direction) — idempotency key for DMR"
+    },
+    "system_version": {
+      "type": "string",
+      "examples": [
+        "v1.2"
+      ]
+    },
+    "anchor_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "scan_id": {
+      "type": "string",
+      "pattern": "^\\d{8}-\\d{3}$"
+    },
+    "scan_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 95
+    },
+    "scan_timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "scan_timestamp_utc + 15m; DMR must drop if now > expires"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "underlying_asset": {
+      "type": "string"
+    },
+    "canonical_asset_id": {
+      "type": "string"
+    },
+    "contract_multiplier": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "LONG",
+        "SHORT",
+        "NEUTRAL"
+      ],
+      "description": "DMR side. Map board up→LONG, down→SHORT. NEUTRAL must be rejected by DMR."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "WATCH",
+        "QUALIFIED",
+        "CONFIRMED",
+        "ELIMINATED",
+        "DATA_INSUFFICIENT",
+        "LOW_CONFIDENCE"
+      ]
+    },
+    "state_duration_minutes": {
+      "type": "number",
+      "minimum": 0
+    },
+    "direction_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "total_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "liquidity_score": {
+      "type": "number"
+    },
+    "momentum_score": {
+      "type": "number"
+    },
+    "market_cap_momentum_score": {
+      "type": "number"
+    },
+    "$comment_mcap_dominance": "216 流通市值主导层随候选下发的排序裁决键（rule_revision y-v2.0.0-r3 起）。全部 optional + nullable：主榜 v1.4.0 与主导层关闭时一个键都不写。执行层不消费它们 —— 它们只服务排序解释与复盘审计。",
+    "mcap_combo_code": { "type": ["string", "null"], "pattern": "^[A-F]{3}$" },
+    "mcap_combo_status": {
+      "type": ["string", "null"],
+      "enum": ["COMPLETE", "INCOMPLETE", "NOT_APPLICABLE", null]
+    },
+    "mcap_z10": { "type": ["integer", "null"], "minimum": -30, "maximum": 30 },
+    "mcap_priority": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
+    "mcap_resonance_k": { "type": ["integer", "null"], "enum": [100, 70, 40, 10, null] },
+    "mcap_ceiling_zone": {
+      "type": ["string", "null"],
+      "enum": ["DMR", "CONFIRMED", "QUALIFIED", "WATCH", "ELIMINATED", null]
+    },
+    "effective_zone": {
+      "type": ["string", "null"],
+      "enum": ["DMR", "CONFIRMED", "QUALIFIED", "WATCH", "ELIMINATED", null]
+    },
+    "final_zone": {
+      "type": ["string", "null"],
+      "enum": ["DMR", "CONFIRMED", "QUALIFIED", "WATCH", "ELIMINATED", null]
+    },
+    "mcap_predicate": {
+      "type": ["string", "null"],
+      "enum": ["P1_CONFIRM", "P2_SOFTEN", "P3_VETO", null]
+    },
+    "mcap_crosscheck": {
+      "type": ["string", "null"],
+      "enum": ["ALIGNED", "DIVERGENT", null]
+    },
+    "w_base": { "type": ["number", "null"] },
+    "w_prio": { "type": ["number", "null"] },
+    "w_k": { "type": ["number", "null"] },
+    "w_combo": { "type": ["number", "null"] },
+    "w_final": { "type": ["number", "null"] },
+    "rank_key": { "type": ["number", "null"], "minimum": 0 },
+    "staircase_score": {
+      "type": "number"
+    },
+    "trend_consistency_score": {
+      "type": "number"
+    },
+    "rank_velocity_score": {
+      "type": "number"
+    },
+    "risk_score": {
+      "type": "number"
+    },
+    "data_confidence": {
+      "type": "number"
+    },
+    "market_rank": {
+      "type": "integer"
+    },
+    "tier_rank": {
+      "type": "integer"
+    },
+    "market_cap_tier": {
+      "type": "string",
+      "enum": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5"
+      ]
+    },
+    "coingecko_coin_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "circulating_supply": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "market_cap_calculated": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "market_cap_coingecko": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data_mode": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "CACHE_FRESH",
+        "CACHE_STALE",
+        "SUPPLY_CACHE_PRICE_LIVE",
+        "MISSING",
+        "BACKFILL"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "indicator_version": {
+      "type": "string"
+    },
+    "parameter_version": {
+      "type": "string"
+    },
+    "mapping_version": {
+      "type": "string"
+    },
+    "data_version": {
+      "type": "string"
+    },
+    "attribution": {
+      "type": "string",
+      "default": "Powered by CoinGecko"
+    },
+    "confirm_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dmr_selected": {
+      "type": "boolean"
+    },
+    "dmr_truncated": {
+      "type": "boolean"
+    },
+    "mcap_zone_mode": {
+      "type": "string",
+      "enum": ["off", "shadow", "on"],
+      "description": "选币榜X v1.3.0 shadow 观察标记：DMR 排序复刻 main v1.4.0，不以天花板改变复盘强子集。只有 shadow 新消息带它，main/Y 老产物不变；后续只经 X overrides 同步 YAML 演进。"
+    },
+    "board_key": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "所属板面；只有 main 具备执行资格（文档A §14）"
+    },
+    "dmr_executable": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "严格布尔；非 true 一律拒绝执行"
+    },
+    "consumable_by_dmr": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "严格布尔；非 true 一律拒绝执行"
+    },
+    "rule_revision": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "不可变规则修订（文档A §13.1）"
+    },
+    "config_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "有效配置 JCS SHA-256（文档A §13.1）"
+    },
+    "mcap_mapping_version": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "216/432 映射语义版本；不适用时为 NOT_APPLICABLE"
+    },
+    "mapping_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "mcap 映射决定性 payload 的 SHA-256；不表示资产映射"
+    },
+    "code_commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "代码身份；不可得时为 UNAVAILABLE_WORKTREE_NOT_GIT"
+    },
+    "asset_mapping_version": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "CoinGecko 资产映射版本（mapping_version 的无歧义新名）"
+    }
+  }
+}

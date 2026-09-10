@@ -1,0 +1,37 @@
+{
+  "board_key": "x",
+  "parameter_version": "param-v1.3.0-screener-x",
+  "rule_revision": "x-v1.3.0-r3",
+  "config_hash": "sha256:092e12eb84bff1101e8d9c6bee2a0bab5aa0817040741d59b25b0cefc6055de0",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "22b0e511da3178e87d7adf51a25b37ee881a72ce",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-07T00:00:00Z",
+  "effective_from_scan_id": "20260907-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_a86b486ddefe82cc",
+  "notes": [
+    "候选件，尚未获得生产切换授权；刻意不放在 rule-manifests/。",
+    "语义：四区仍是历史 v1.3（与 r2 相同）；**DMR 改为 216 排序权重而非准入**。",
+    "依据（staging 2139 节点 / 39,329 笔实测）：方向天花板做 DMR 准入是反向指标 ——",
+    "确认区 ceil=DMR 合计 -15.1%，ceil=WATCH 合计 +188.8%；用它做准入等于筛掉好票。",
+    "而 216 里的三周期全同向是正向的：AAA/FFF 合计 +161.0% / 盈亏比 3.21，",
+    "混合组合合计 -477.7% / 盈亏比 1.98。故只把全同向提为排序首键，天花板退出准入。",
+    "DMR 准入回到历史 v1.3 口径：确认 ∩ 基础消息条件 → 同币去重 → Top-K 16。",
+    "缺 216 映射仍 fail-closed（排序键要用它）。仍不可执行；四区零触碰。",
+    "【已裁决】接受 Top-K 截断；接受「v1.3 阈值 + 168 根输入」的适配口径。",
+    "【补做 · 非准点切换】实际执行于 2026-09-07T02:37:19.458207Z，距声明的生效边界 2026-09-07T00:00:00Z 已 157 分钟；其间 X 已按旧克隆规则产出约 11 个节点。",
+    "【未兑现前提】上述节点必须由 rebuild_screener_x_v13.py 的历史重建（--staging → --verify-staging → --promote）用 v1.3 规则重算覆盖，否则它们挂着 r2 身份却是克隆数据。重建完成前，本 revision 的当日绩效统计不可用。"
+  ],
+  "manifest_hash": "sha256:d67dadae1b1d7c417ec171d591ae380a0b851a9ab7ecf6793bbb2b12def21330"
+}

@@ -1,0 +1,207 @@
+{
+  "$comment": [
+    "选币榜「板面变体」注册表 —— 服务端唯一事实源。",
+    "",
+    "一个变体 = 一套参数版本 + 一份独立数据目录 + 一组独立 API 前缀 / 前端路由。",
+    "  main = 现有「选币榜」，参数版本 param-v1.4.0-staircase-confirm-dmr（冻结，禁止在此改动）",
+    "  x    = 选币榜X，param-v1.3.0-screener-x：对外 v1.3.0，当前复刻 main v1.4.0，shadow 四列仅观察；复盘独立，后续仅改本条 overrides 并同步 YAML。",
+    "  y    = 新增「选币榜Y」，参数版本 param-v2.0.0-screener-y",
+    "",
+    "选币榜Y 的定位：v2.0.0 参数细则未定之前，先对选币榜做 100% 复刻。",
+    "复刻的实现方式是「投影」（projected=true）：复用同一轮扫描已经取到的 G1–G4 原始",
+    "指标，用本变体自己的参数重算 Score / 状态机 / DMR 区，写进自己的数据目录。",
+    "因此：不多打一次交易所或 CoinGecko 的接口，也不碰 main 的任何文件。",
+    "",
+    "后续 v2.0.0 调参的**唯一机器入口**就是下面的 `overrides`：",
+    "  overrides.settings      → coin_selection.scan.SelectionSettings 的字段（打分权重、dmr_top_k、硬门槛…）",
+    "  overrides.state_config  → coin_selection.state_machine.StateConfig 的字段（各区阈值、停留、连击、DMR 区门槛）",
+    "留空 = 与 v1.4.0 完全一致 = 当前的 100% 复刻状态。",
+    "人读版参数快照见 param_file；改 overrides 时必须同步改那份 yaml，否则文档与生效值会分叉。",
+    "",
+    "硬约束：dmr_executable=false 的变体，其 DMR inbox 绝不允许被 dmr-adapter 消费。",
+    "选币榜Y 走独立 inbox 目录（data/dmr-adapter-y/inbox），且 param-v2.0.0-screener-y",
+    "不在 DMR_PARAM_WHITELIST 里 —— 两道锁，纸面执行层永远吃不到 Y 的候选。",
+    "",
+    "—— 时间区（cycle）——",
+    "每个变体可以有自己的周期管理。`cycle.enabled=false` = 没有任何周期重置，",
+    "分区成员跨天连续持有 —— 这是「选币榜」(main) 一直以来的行为，冻结不动。",
+    "",
+    "「选币榜Y」启用 24 小时周期：周期节点一到，先清空**全部分区的历史币种数据**",
+    "（状态机 + 日去重台账），再由同一节点的实时扫描从零重建分区。",
+    "周期起点沿用系统既有的每日锚点 00:00 UTC（scan_id 的 000 号节点），不另造标准。",
+    "",
+    "清空的是**当刻板面的分区归属**，不是历史快照与复盘账本 —— 后者是",
+    "「复盘选币」的唯一事实源，删了就再也回放不出来（见 retention.json）。",
+    "重置那一刻被强行清出分区的交易，会在账本里带上 CYCLE_RESET 旗标，",
+    "与策略自己退出的交易区分开，否则 v2.0.0 的胜率会被每日强平污染。",
+    "",
+    "warmup 是留给「后续逐步优化」的旋钮，**默认关闭**：重置后状态机从 NONE 起步，",
+    "受 min_dwell / min_streak 约束，最快 5 个节点（75 分钟）才会出现第一个确认区币种。",
+    "打开 warmup 可以在周期头 N 个节点用一套更短的停留/连击门槛加速重建。",
+    "它**只允许**调时间类门槛（min_dwell_* / min_streak_*）——",
+    "N1–N4、F2、300 万美元硬门槛、SS / 一致性 / 数据质量阈值一律不得放宽，",
+    "代码里有白名单强制执行。这不是 SM_FAST，不会开启跨级级联。"
+  ],
+  "version": "board-variants-v1.0.0",
+  "effective_from_utc": "2026-08-25T00:00:00Z",
+  "boards": [
+    {
+      "key": "main",
+      "label": "选币榜",
+      "short_label": "选币榜",
+      "parameter_version": "param-v1.4.0-staircase-confirm-dmr",
+      "param_file": "packages/config/param-v1.4.0-staircase-confirm-dmr.yaml",
+      "data_dir": "data/coin-selection",
+      "dmr_inbox": "data/dmr-adapter/inbox",
+      "api_prefix": "/api/v1/screener",
+      "web_route": "/screener",
+      "primary": true,
+      "projected": false,
+      "dmr_executable": true,
+      "enabled": true,
+      "overrides": {
+        "settings": {},
+        "state_config": {}
+      },
+      "$note": "冻结项。新增任何变体都不得改写这一条，否则就是在动生产选币榜。",
+      "cycle": {
+        "enabled": false,
+        "$comment": "冻结项：「选币榜」没有 24 小时重置，分区成员跨天连续持有。不得改成 true。"
+      }
+    },
+    {
+      "key": "x",
+      "label": "选币榜X",
+      "short_label": "选币榜X",
+      "parameter_version": "param-v1.3.0-screener-x",
+      "param_file": "packages/config/param-v1.3.0-screener-x.yaml",
+      "data_dir": "data/coin-selection-x",
+      "dmr_inbox": "data/dmr-adapter-x/inbox",
+      "api_prefix": "/api/v1/screener-x",
+      "web_route": "/screener-x",
+      "primary": false,
+      "projected": true,
+      "dmr_executable": false,
+      "enabled": true,
+      "enabled_env": "ENABLE_BOARD_X",
+      "overrides": {
+        "settings": {
+          "mcap_zone_mode": "shadow",
+          "dmr_selection_mode": "confirmed-basic-216-v1.3"
+        },
+        "state_config": {
+          "selection_semantics": "dual-path-v1.3",
+          "mom_confirmed": 75,
+          "mom_confirmed_m": 75
+        }
+      },
+      "$note": [
+        "v1.3.0 是选币榜X 的对外版本号；当前策略 100% 复刻 main v1.4.0，与旧 param-v1.3.0-dual-path-sticky 无关。",
+        "唯一机器化调参入口是本条 overrides.settings / overrides.state_config；改 overrides 必须同一次提交同步 param_file，独立演进不得影响 main/y。",
+        "shadow 的 216组合 / Z / K / 天花板只供观察验证，不参与准入、退出、新五区、排序或 DMR 裁决；独立快照与复盘账本使用同一个 param_hash。",
+        "两道锁：独立 data/dmr-adapter-x/inbox，param-v1.3.0-screener-x 不在 DEFAULT_PARAM_WHITELIST / DMR_PARAM_WHITELIST；当前不可执行。"
+      ],
+      "cycle": {
+        "enabled": false,
+        "$comment": "选币榜X v1.3.0 复刻 main v1.4.0：跨天连续持有，不引入 CYCLE_RESET 污染复盘对照。"
+      }
+    },
+    {
+      "key": "y",
+      "label": "选币榜Y",
+      "short_label": "选币榜Y",
+      "parameter_version": "param-v2.0.0-screener-y",
+      "param_file": "packages/config/param-v2.0.0-screener-y.yaml",
+      "data_dir": "data/coin-selection-y",
+      "dmr_inbox": "data/dmr-adapter-y/inbox",
+      "api_prefix": "/api/v1/screener-y",
+      "web_route": "/screener-y",
+      "primary": false,
+      "projected": true,
+      "dmr_executable": false,
+      "enabled": true,
+      "enabled_env": "ENABLE_BOARD_Y",
+      "overrides": {
+        "settings": {
+          "w_ss": 0.2,
+          "w_mom": 0.2,
+          "w_liq": 0.15,
+          "w_mcap": 0.25,
+          "w_cons": 0.1,
+          "w_rank": 0.05,
+          "w_risk": 0.05,
+          "mcap_zone_mode": "on",
+          "mcap_zone_authorization": "y-v2.0.0-r3-mcap-dominant",
+          "mcap_dmr_ceiling_min": "CONFIRMED"
+        },
+        "state_config": {}
+      },
+      "$note": [
+        "To-Be TUNED_V2_MCAP_COMBO：Score 权重 w_mcap=0.25 > w_mom=0.20（唯一机器入口）。",
+        "state_config 仍空 = 层 A 门槛沿用 v1.4.0 —— 这是**刻意**的：v2.0.0 把第一裁决交给",
+        "216 主导层（max(base,ceiling) + P1/P2/P3），层 A 只当被压制的 base；放宽它由",
+        "check_y_readout.py --stage-gates 的 S3 门把关，当前尚未打开。",
+        "不要在这里钉 enable_mcap_zone；开关只有 mcap_zone_mode 一个。",
+        "216 天花板**已于 22b0e51 授权开启**：mcap_zone_mode=\"on\" + mcap_zone_authorization",
+        "（缺省仍是 \"off\" = 字节级退化为现网，红线第 14 条；那是未授权时的行为）。",
+        "dmr_executable 必须保持 false；param-v2.0.0-screener-y 不在 DMR_PARAM_WHITELIST。",
+        "",
+        "—— 文档A/文档B（Claude_Opus5 版）落地后的约定 ——",
+        "阶段 0（缺陷修复 + param_hash 一致性契约 + 离线回放器 + 账本增列）、阶段 1（216 天花板层",
+        "代码）、阶段 2（shadow 模式）均已交付；**阶段 3（目标七权重）与阶段 4（天花板生效）亦已上线**：",
+        "权重见上面 overrides.settings，天花板见 mcap_zone_mode=\"on\"（da8b4d7 / 22b0e51）。此处早前",
+        "写的「前置条件一条都不满足」已随之作废；仍未开的是 state_config（S3 门未过），",
+        "门是否已过：python3 scripts/check_y_readout.py --stage-gates",
+        "",
+        "天花板层要开时，只允许在下面这个 overrides.settings 里加键（不得开第二个入口）：",
+        "  mcap_zone_mode      \"off\" | \"shadow\" | \"on\"（缺省 off）",
+        "  mcap_zone_cut_dmr / _confirmed / _qualified / _watch   4 个切点，本层唯一自由度",
+        "  mcap_zone_abstain_demote                              grade=None 是否降一级",
+        "一键回滚 = 把 overrides 两个 map 清空为 {}。",
+        "",
+        "—— 第三轮 ChatGpt_SOL5.6 落地后的约定（本次仍未改任何生效值）——",
+        "216 天花板改用文档A §9.4 的方向 ceiling 生成器（每侧 12/23/29/53/99，规范 24/46/58/70/18），",
+        "冻结表 packages/config/mcap-216-v2.0.0-r1.json，mapping_hash 与文档A 附录C 逐字节一致。",
+        "合并公式固定为 effective_rank = max(base_rank, ceiling_rank) —— 只能保持或降级；",
+        "三周期任一 grade=null → ceiling 保守封到观察；NONE / DATA_INSUFFICIENT / LOW_CONFIDENCE 原样旁路。",
+        "",
+        "开关仍然只有 overrides.settings.mcap_zone_mode 一个（off | shadow | on，缺省 off）；",
+        "新增 overrides.settings.mcap_ruleset 选择用哪套裁决：",
+        "  \"sol5.6\"  文档A §9.4 生成器（缺省，本轮口径）",
+        "  \"opus5\"   第二轮切点式天花板（每侧 13/22/32/72/77），保留为消融基线",
+        "两者都受同一个 mcap_zone_mode 控制，因此缺省 off 时都不写任何字段、板面零漂移。",
+        "",
+        "不可变规则身份见 packages/config/rule-manifests/y-v2.0.0-r1.json（rule_revision=y-v2.0.0-r1）；",
+        "它与 param_hash 并存：param_hash 是第二轮的粗粒度指纹，为账本连续性刻意保持不变，",
+        "config_hash 才是文档A §13.1 要求的完整有效配置身份（含三个 feature_flags 与红线冻结段）。",
+        "一致性与可回测验收：python3 scripts/verify_rule_consistency.py --board y",
+        "零漂移取证：      python3 scripts/shadow_project_y.py --board y"
+      ],
+      "cycle": {
+        "enabled": true,
+        "period_hours": 24,
+        "anchor_utc": "00:00",
+        "clear": [
+          "state_machine",
+          "daily_unique"
+        ],
+        "archive_close": true,
+        "warmup": {
+          "enabled": false,
+          "nodes": 0,
+          "state_config": {}
+        },
+        "$comment": [
+          "24 小时周期，起点 00:00 UTC —— 与系统既有的每日锚点（scan_id 的 000 号节点）同一个刻度。",
+          "period_hours 必须能被 15 分钟整除；改成 12 / 6 就是半日 / 六小时周期。",
+          "clear 列出周期节点要清空的东西：",
+          "  state_machine  分区归属 + 停留 + 连击 + 入区时间/价格（这就是「清空所有分区历史币种数据」）",
+          "  daily_unique   本周期日去重入选台账",
+          "archive_close=true 会把重置前一刻的分区名单存到 <data_dir>/cycle/<周期>-close.json（只读审计用）。",
+          "warmup 默认关闭；打开后只允许改 min_dwell_* / min_streak_*，例：",
+          "  {\"enabled\": true, \"nodes\": 4, \"state_config\": {\"min_dwell_watch\": 0, \"min_streak_watch\": 1}}"
+        ]
+      }
+    }
+  ]
+}

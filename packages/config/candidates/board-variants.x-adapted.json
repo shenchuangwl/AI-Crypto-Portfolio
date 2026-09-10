@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "切换时要写进 packages/config/board-variants.json 的 boards[key=x].overrides 的片段。",
+    "本文件不被任何生产代码读取 —— 它是给人复制粘贴用的，不是第二个加载入口。",
+    "",
+    "两个键必须同进同出：dmr_selection_mode=confirmed-basic-216-v1.3 的前提是",
+    "四区已经是 dual-path-v1.3。只开一半会被 scripts/check_main_frozen.py 判红，",
+    "也会被 coin_selection.scan.build_dmr_messages 的身份守卫当场拒绝 —— 那是",
+    "「v1.3 的 DMR + v1.4 的四区」，属于第三套语义，不是本轮要交付的东西。",
+    "",
+    "mcap_zone_mode 必须保持 shadow：这是「216 只约束 DMR、不改四区」的结构性保证。",
+    "改成 on 会让 216 天花板接管四区归属与排序，那是选币榜Y 的口径，不是 X 的。",
+    "",
+    "改这里必须同一次提交同步 packages/config/param-v1.3.0-screener-x.yaml，",
+    "并把 candidates/x-v1.3.0-r2.candidate.json 填好三个 REPLACE_ 占位后",
+    "复制进 packages/config/rule-manifests/（复制过去即到点自动生效，最后一步再做）。"
+  ],
+  "overrides": {
+    "settings": {
+      "mcap_zone_mode": "shadow",
+      "dmr_selection_mode": "confirmed-basic-216-v1.3"
+    },
+    "state_config": {
+      "selection_semantics": "dual-path-v1.3"
+    }
+  }
+}

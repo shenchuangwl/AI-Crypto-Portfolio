@@ -1,0 +1,43 @@
+{
+  "name": "hermes-usdtm-terminal",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "verify:mcap-sort": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-sort.mjs",
+    "verify:period-returns": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/period-returns.mjs",
+    "verify:pool-counts": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/pool-counts.mjs",
+    "verify:review-counts": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/review-counts.mjs",
+    "verify:review-time": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/review-time.mjs",
+    "verify:board-split": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/board-split.mjs",
+    "verify": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-sort.mjs && node tests/.out/period-returns.mjs && node tests/.out/pool-counts.mjs && node tests/.out/review-counts.mjs && node tests/.out/review-time.mjs && node tests/.out/board-split.mjs && node tests/.out/mcap-zone.mjs && node tests/.out/onlycoin.mjs",
+    "verify:onlycoin": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/onlycoin.mjs",
+    "verify:mcap-zone": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-zone.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.9",
+    "dayjs": "^1.11.21",
+    "dockview": "^4.13.1",
+    "klinecharts": "^9.8.12",
+    "lightweight-charts": "^5.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "oxlint": "^1.75.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  }
+}

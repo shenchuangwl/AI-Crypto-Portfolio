@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/contracts/dmr-candidate-batch.schema.json",
+  "title": "DmrCandidateBatch",
+  "description": "DMR inbox 批次信封。ChatGpt_SOL5.6 文档B §18.5 新增：batch 与 candidate 必须**双方**携带完整执行身份，任一缺失、null、类型错误都由 execution_guard 整批拒绝（文档A §14 / 文档B §18.6）。",
+  "type": "object",
+  "required": ["scan_id", "candidates"],
+  "additionalProperties": true,
+  "properties": {
+    "scan_id": {
+      "type": "string",
+      "pattern": "^\\d{8}-\\d{1,3}$",
+      "description": "15m 逻辑节点号 YYYYMMDD-NNN（文档B §4.1）"
+    },
+    "generated_at_utc": { "type": "string" },
+    "board_key": {
+      "type": ["string", "null"],
+      "description": "所属板面。只有 \"main\" 具备执行资格；\"y\" 永久不可执行（文档A §3 / §20）。"
+    },
+    "dmr_executable": {
+      "type": ["boolean", "null"],
+      "description": "严格布尔。字符串 \"true\"、数字 1、未知枚举一律拒绝（文档B §18.6）。"
+    },
+    "consumable_by_dmr": {
+      "type": ["boolean", "null"],
+      "description": "严格布尔。与 dmr_executable 同时为 true 才可能放行。"
+    },
+    "parameter_version": { "type": ["string", "null"] },
+    "rule_revision": { "type": ["string", "null"] },
+    "config_hash": { "type": ["string", "null"] },
+    "mcap_mapping_version": { "type": ["string", "null"] },
+    "mapping_hash": { "type": ["string", "null"] },
+    "code_commit": { "type": ["string", "null"] },
+    "param_hash": { "type": ["string", "null"] },
+    "rule_identity": {
+      "type": ["object", "null"],
+      "description": "完整 RuleManifest 身份引用（文档A §13.1）",
+      "additionalProperties": true
+    },
+    "candidates": {
+      "type": "array",
+      "description": "Top-K 去重后的 DMR 候选",
+      "items": { "type": "object" }
+    },
+    "all_confirmed": { "type": "array", "items": { "type": "object" } },
+    "rank": { "type": ["object", "array", "null"] },
+    "note": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "executableBatch": {
+      "description": "执行 profile：只有满足本子模式的 batch 才可能被 adapter/executor 放行。required + const，缺失/null/类型错误全部不匹配。",
+      "type": "object",
+      "required": [
+        "board_key",
+        "dmr_executable",
+        "consumable_by_dmr",
+        "parameter_version",
+        "rule_revision",
+        "config_hash",
+        "mcap_mapping_version",
+        "mapping_hash",
+        "code_commit"
+      ],
+      "properties": {
+        "board_key": { "const": "main" },
+        "dmr_executable": { "const": true },
+        "consumable_by_dmr": { "const": true },
+        "parameter_version": { "type": "string", "minLength": 1 },
+        "rule_revision": { "type": "string", "minLength": 1 },
+        "config_hash": { "type": "string", "minLength": 1 },
+        "mcap_mapping_version": { "type": "string", "minLength": 1 },
+        "mapping_hash": { "type": "string", "minLength": 1 },
+        "code_commit": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

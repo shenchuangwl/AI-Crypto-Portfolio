@@ -1,0 +1,249 @@
+{
+  "$comment": [
+    "数据保留策略。唯一事实源；由 scripts/prune_data.py 执行，默认 dry-run。",
+    "",
+    "v2.0.0：保留上限**严格限制为 31 天**（不超过 1 个月）。超过 31 天的历史一律删除，",
+    "只保留截至当前时刻、时间跨度在最近 31 天内的真实有效数据，专门用于支撑",
+    "「复盘选币」栏目的分析与展示。31 天覆盖该栏目最长的「近 28 天」窗口并留 3 天余量。",
+    "",
+    "`max_retention_days` 是**结构性上限**：prune_data.py 会把任何超过它的 keep_days",
+    "强制夹到 31 天并告警，所以后来者把某条规则改成 90 也不会突破这个口子。",
+    "",
+    "最重要的一条：snapshots/*.json 是「复盘选币」账本的唯一原始事实源。",
+    "账本里已经落库的交易不会因为删快照而消失，但删掉之后就再也无法对那段时间",
+    "做 build_review_ledger.py --reset 全量重建。prune_data.py 会在这种情况下告警。",
+    "",
+    "改这个文件 = 改数据寿命。改之前先跑 `python3 scripts/prune_data.py --plan`。",
+    "",
+    "板面变体（v1.1.0 起）：「选币榜Y」(param-v2.0.0-screener-y) 有自己的一套目录 ——",
+    "data/coin-selection-y/snapshots 与 data/dmr-adapter-y/inbox，保留期与主板面**完全一致**（31 天）。",
+    "选币榜Y 只写板面快照，不写 *.full.json，所以稳态增量 ≈ 4.9 GB（板面）+ 0.05 GB（inbox）。",
+    "它的 guard_review_ledger 必须指向自己那本账本（ledger_path），",
+    "拿主板面的水位去删 Y 的快照会删掉 Y 还没入账的节点。"
+  ],
+  "version": "retention-v2.1.0",
+  "effective_from_utc": "2026-08-24T12:40:00Z",
+  "observed": {
+    "$comment": "设定当天的实测值，用于判断后续是否偏离。",
+    "measured_at_utc": "2026-08-24T12:40:00Z",
+    "snapshot_span_days": 9.5,
+    "snapshots_board_files": 907,
+    "snapshots_board_gb": 1.49,
+    "snapshots_board_mb_per_day": 161.7,
+    "snapshots_full_files": 907,
+    "snapshots_full_gb": 0.85,
+    "snapshots_full_mb_per_day": 92.3,
+    "total_mb_per_day": 253.9,
+    "review_ledger_mb": 8.4,
+    "mount_total_gb": 118,
+    "mount_free_gb_at_setting": 47,
+    "projected_steady_state_gb": 7.8,
+    "note_31d": "31 天稳态 = 板面 4.9 GB + full 2.8 GB + inbox 0.05 GB ≈ 7.8 GB（v1.0.0 的 90 天方案为 17.2 GB）",
+    "note_board_y": "选币榜Y 只写板面（不写 full）：31 天稳态 ≈ 4.9 GB + inbox 0.05 GB；含 Y 之后整体稳态约 12.8 GB（原 7.8 GB）"
+  },
+  "disk": {
+    "mount": "/data120",
+    "warn_free_gb": 25,
+    "min_free_gb": 15,
+    "$comment": "free < min_free_gb → prune_data.py 退出码 2（供 cron / 监控告警）。"
+  },
+  "rules": [
+    {
+      "name": "snapshots_board",
+      "path": "data/coin-selection/snapshots",
+      "glob": "*.json",
+      "exclude_glob": "*.full.json",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "$comment": [
+        "复盘账本的唯一事实源。31 天 ≈ 4.9 GB，覆盖栏目最长的「近 28 天」窗口 + 3 天余量。",
+        "min_keep_files=960（10 天 × 96 节点）是硬地板：无论 keep_days 怎么改，",
+        "最近 10 天的板面永远留着，避免误配把账本源头一次性清空。"
+      ]
+    },
+    {
+      "name": "snapshots_full",
+      "path": "data/coin-selection/snapshots",
+      "glob": "*.full.json",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": false,
+      "$comment": [
+        "内部全量板面（未截断 transitions + rows）。账本从不把它当事实源，",
+        "只有验收闸 C2 的交叉校验会读。与板面同为 31 天，口径统一。"
+      ]
+    },
+    {
+      "name": "snapshots_board_x",
+      "path": "data/coin-selection-x/snapshots",
+      "glob": "*.json",
+      "exclude_glob": "*.full.json",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "ledger_path": "data/coin-selection-x/review/ledger.sqlite",
+      "$comment": "选币榜X v1.3.0 复刻 main v1.4.0，复盘闭环独立；后续仅改 X overrides 同步 YAML，保留期与 main/y 一致，守卫不得借主榜水位。"
+    },
+    {
+      "name": "snapshots_board_y",
+      "path": "data/coin-selection-y/snapshots",
+      "glob": "*.json",
+      "exclude_glob": "*.full.json",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "ledger_path": "data/coin-selection-y/review/ledger.sqlite",
+      "$comment": [
+        "「选币榜Y」(param-v2.0.0-screener-y) 板面 —— v2.0.0 复盘账本的唯一事实源。",
+        "与主板面同为 31 天，口径必须一致：两块板面的可复盘窗口不同就没法做 A/B 对照。",
+        "guard 指向 Y 自己的账本；主板面的水位在这里是错的参照物。"
+      ]
+    },
+    {
+      "name": "dmr_inbox",
+      "path": "data/dmr-adapter/inbox",
+      "glob": "*.candidates.json*",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "$comment": [
+        "DMR 区成员的权威源（v1.3 窗口靠它把可复盘起点前推 ~10h）。",
+        "必须 >= snapshots_board 的 keep_days，否则重建时 DMR 会凭空缺一段。",
+        "glob 同时覆盖 .candidates.json 与配套的 .done 标记，两者必须成对删除。"
+      ]
+    },
+    {
+      "name": "dmr_inbox_x",
+      "path": "data/dmr-adapter-x/inbox",
+      "glob": "*.candidates.json*",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "ledger_path": "data/coin-selection-x/review/ledger.sqlite",
+      "$comment": "选币榜X v1.3.0 不可执行的独立 DMR 权威源；main v1.4.0 复刻与复盘同源，后续 X overrides 演进也不得共用 inbox。"
+    },
+    {
+      "name": "dmr_inbox_y",
+      "path": "data/dmr-adapter-y/inbox",
+      "glob": "*.candidates.json*",
+      "age_from": "scan_id",
+      "keep_days": 31,
+      "min_keep_files": 960,
+      "guard_review_ledger": true,
+      "ledger_path": "data/coin-selection-y/review/ledger.sqlite",
+      "$comment": [
+        "「选币榜Y」的 DMR 区成员权威源。**不可执行**：dmr-adapter 只看 data/dmr-adapter/inbox，",
+        "且 param-v2.0.0-screener-y 不在 DMR_PARAM_WHITELIST 里。这里留着只为复盘能还原 DMR 区。",
+        "必须 >= snapshots_board_y 的 keep_days，否则重建时 Y 的 DMR 区会凭空缺一段。"
+      ]
+    },
+    {
+      "name": "dmr_outbox",
+      "path": "data/dmr-adapter/outbox",
+      "glob": "*",
+      "age_from": "mtime",
+      "keep_days": 30,
+      "min_keep_files": 96
+    },
+    {
+      "name": "dmr_rejected",
+      "path": "data/dmr-adapter/rejected",
+      "glob": "*",
+      "age_from": "mtime",
+      "keep_days": 30,
+      "min_keep_files": 96
+    },
+    {
+      "name": "dmr_accepted",
+      "path": "data/dmr-adapter/accepted",
+      "glob": "*",
+      "age_from": "mtime",
+      "keep_days": 30,
+      "min_keep_files": 96
+    },
+    {
+      "name": "dmr_executor_runs",
+      "path": "data/dmr-executor/runs",
+      "glob": "*",
+      "age_from": "mtime",
+      "keep_days": 30,
+      "min_keep_files": 32
+    },
+    {
+      "name": "cache_kline1d",
+      "path": "data/coin-selection/kline1d_cache",
+      "glob": "**/*",
+      "age_from": "mtime",
+      "keep_days": 7,
+      "min_keep_files": 0,
+      "$comment": "可再生缓存，删了下轮扫描自己补。",
+      "recursive": true
+    },
+    {
+      "name": "cache_kline1h",
+      "path": "data/coin-selection/kline1h_cache",
+      "glob": "**/*",
+      "age_from": "mtime",
+      "keep_days": 7,
+      "min_keep_files": 0,
+      "recursive": true
+    },
+    {
+      "name": "cache_kline_tf",
+      "path": "data/coin-selection/kline_tf_cache",
+      "glob": "**/*",
+      "age_from": "mtime",
+      "keep_days": 7,
+      "min_keep_files": 0,
+      "recursive": true
+    },
+    {
+      "name": "cache_turnover",
+      "path": "data/coin-selection/turnover_cache",
+      "glob": "**/*",
+      "age_from": "mtime",
+      "keep_days": 7,
+      "min_keep_files": 0,
+      "recursive": true
+    }
+  ],
+  "logs": {
+    "$comment": [
+      "至今没有任何轮转，market_ingest.log 已 27 MB 并在持续增长。",
+      "用 copytruncate 语义：先拷到 .1 再原地清空，写日志的进程仍持有同一个 fd，",
+      "不需要重启任何服务（直接 rename 会让进程继续往被改名的文件里写）。"
+    ],
+    "paths": [
+      "data/coin-selection/logs/*.log"
+    ],
+    "rotate_at_mb": 64,
+    "keep_rotations": 5,
+    "compress": true
+  },
+  "never_delete": [
+    "data/coin-selection/latest.json",
+    "data/coin-selection/latest.internal.json",
+    "data/coin-selection/state_machine.json",
+    "data/coin-selection/daily_unique.json",
+    "data/coin-selection/loop_status.json",
+    "data/coin-selection/loop.pid",
+    "data/coin-selection/review/ledger.sqlite",
+    "data/coin-selection/public-access.creds",
+    "data/coin-selection-x/latest.json",
+    "data/coin-selection-x/state_machine.json",
+    "data/coin-selection-x/daily_unique.json",
+    "data/coin-selection-x/review/ledger.sqlite",
+    "data/coin-selection-y/latest.json",
+    "data/coin-selection-y/state_machine.json",
+    "data/coin-selection-y/daily_unique.json",
+    "data/coin-selection-y/review/ledger.sqlite"
+  ],
+  "max_retention_days": 31
+}

@@ -1,0 +1,309 @@
+{
+  "meta": {
+    "system_version": "v1.2",
+    "anchor_date": "2026-08-10",
+    "scan_id": "20260810-025",
+    "scan_sequence": 25,
+    "scan_timestamp_utc": "2026-08-10T06:15:00Z",
+    "effective_universe": 528,
+    "baseline_universe": 526,
+    "regime": 0.58,
+    "regime_label": "neutral_bullish",
+    "data_mode": "LIVE",
+    "state_counts": {
+      "WATCH": 47,
+      "QUALIFIED": 18,
+      "CONFIRMED": 7,
+      "ELIMINATED": 61,
+      "DATA_INSUFFICIENT": 9,
+      "LOW_CONFIDENCE": 4
+    },
+    "coingecko_credits": {
+      "used_today": 72,
+      "month_est": 8904,
+      "month_cap": 10000,
+      "utilization": 0.89,
+      "alert_level": "warn"
+    },
+    "parameter_version": "param-v1.3.0-dual-path-sticky",
+    "mapping_version": "map-20260810",
+    "data_version": "data-20260810-025",
+    "indicator_version": "g1g2g3g4-sm-dual-path",
+    "occupancy": {
+      "sides": {
+        "WATCH": 47,
+        "QUALIFIED": 18,
+        "CONFIRMED": 7,
+        "ELIMINATED": 61,
+        "DATA_INSUFFICIENT": 9,
+        "LOW_CONFIDENCE": 4
+      },
+      "confirmed_unique": 1,
+      "qualified_unique": 1,
+      "ready_confirm": []
+    },
+    "daily_unique": {
+      "anchor_date": "2026-08-10",
+      "confirmed": 1,
+      "qualified": 1,
+      "watch": 47,
+      "eliminated": 61,
+      "confirmed_symbols": [
+        "XXXUSDT"
+      ],
+      "note": "unique symbols that entered the zone at least once today; NOT the per-scan occupancy consumed by DMR"
+    },
+    "control": {
+      "n_impulse": 24,
+      "live_ratio": 1.0,
+      "universe_dev": 0.0,
+      "universe_count": 528,
+      "g1_unique": 210,
+      "freeze_new_confirm": false,
+      "low_breadth": false,
+      "data_stress": false,
+      "universe_stress": false
+    },
+    "dmr": {
+      "unique_before_k": 1,
+      "inbox_k": 16,
+      "inbox_count": 1,
+      "truncated": 0,
+      "underfilled": true,
+      "alerts": []
+    },
+    "alerts": [
+      "CONFIRM_UNDERFILLED"
+    ],
+    "alert": "CONFIRM_UNDERFILLED",
+    "mcap_tf": {
+      "enabled": true,
+      "symbols": 525,
+      "timeframes": [
+        "30m",
+        "2h",
+        "6h"
+      ],
+      "cache_hits": 932,
+      "rest_calls": 643,
+      "errors": 0,
+      "graded": {
+        "30m": 525,
+        "2h": 524,
+        "6h": 525
+      },
+      "insufficient": {
+        "30m": 0,
+        "2h": 0,
+        "6h": 0
+      },
+      "unclassified": {
+        "30m": 0,
+        "2h": 1,
+        "6h": 0
+      },
+      "supply_known": 237
+    }
+  },
+  "long_pool": [
+    {
+      "rank": 1,
+      "symbol": "XXXUSDT",
+      "underlying_asset": "XXX",
+      "canonical_asset_id": "xxx-token",
+      "contract_multiplier": 1,
+      "direction": "up",
+      "state": "CONFIRMED",
+      "state_enter_time_utc": "2026-08-10T02:45:00Z",
+      "state_duration_minutes": 210,
+      "state_enter_price": 0.0712,
+      "score_up": 84.2,
+      "score_down": 12.1,
+      "direction_confidence": 1.0,
+      "liquidity_score": 88,
+      "liquidity_grade": "A",
+      "mcap_grade_30m": "A",
+      "mcap_grade_2h": "A",
+      "mcap_grade_6h": "B",
+      "mcap_tf": {
+        "30m": {
+          "grade": "A",
+          "ma6": 334000000.0,
+          "ma12": 328000000.0,
+          "ma26": 311000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        },
+        "2h": {
+          "grade": "A",
+          "ma6": 336000000.0,
+          "ma12": 330000000.0,
+          "ma26": 309000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        },
+        "6h": {
+          "grade": "B",
+          "ma6": 325000000.0,
+          "ma12": 331000000.0,
+          "ma26": 305000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        }
+      },
+      "momentum_score": 81,
+      "mcap_momentum_score": 72,
+      "staircase_score": 78,
+      "consistency_score": 0.85,
+      "rank_velocity_score": 74,
+      "risk_score": 100,
+      "data_confidence": 96,
+      "ret_15m": 0.008,
+      "ret_1h": 0.021,
+      "ret_4h": 0.044,
+      "ret_24h": 0.072,
+      "ret_1w": 0.163,
+      "ret_1mo": 0.418,
+      "ret_since_anchor": 0.064,
+      "aqv_6d_m": 88,
+      "aqv_12d_m": 71,
+      "aqv_26d_m": 64,
+      "circulating_supply": 4200000000,
+      "market_cap_coingecko": 329000000,
+      "market_cap_calculated": 331000000,
+      "supply_source": "CG",
+      "data_mode": "LIVE",
+      "supply_as_of_utc": "2026-08-10T06:13:00Z",
+      "mapping_confidence": 1.0,
+      "risk_flags": [],
+      "reason_codes": [
+        "G1A",
+        "G2OK",
+        "G3OK",
+        "SS3",
+        "OI_UP",
+        "RANK_IMPROVING"
+      ],
+      "not_confirmed_reasons": [],
+      "ref_price": 0.0788,
+      "market_rank": 1,
+      "tier_rank": 1,
+      "market_cap_tier": "T3",
+      "coingecko_coin_id": "xxx-token",
+      "qualified_path": "S",
+      "confirmed_path": "S",
+      "ready_confirm": false
+    },
+    {
+      "rank": 2,
+      "symbol": "YYYUSDT",
+      "underlying_asset": "YYY",
+      "canonical_asset_id": "yyy-token",
+      "contract_multiplier": 1,
+      "direction": "up",
+      "state": "QUALIFIED",
+      "state_enter_time_utc": "2026-08-10T05:00:00Z",
+      "state_duration_minutes": 75,
+      "state_enter_price": 0.0664,
+      "score_up": 68.1,
+      "score_down": 20.3,
+      "direction_confidence": 1.0,
+      "liquidity_score": 76,
+      "liquidity_grade": "B",
+      "mcap_grade_30m": "F",
+      "mcap_grade_2h": "E",
+      "mcap_grade_6h": "D",
+      "mcap_tf": {
+        "30m": {
+          "grade": "F",
+          "ma6": 102000000.0,
+          "ma12": 105000000.0,
+          "ma26": 110000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        },
+        "2h": {
+          "grade": "E",
+          "ma6": 106000000.0,
+          "ma12": 104000000.0,
+          "ma26": 112000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        },
+        "6h": {
+          "grade": "D",
+          "ma6": 119000000.0,
+          "ma12": 103000000.0,
+          "ma26": 109000000.0,
+          "bars": 31,
+          "supply_known": true,
+          "reason": "ok"
+        }
+      },
+      "momentum_score": 70,
+      "mcap_momentum_score": 65,
+      "staircase_score": 61,
+      "consistency_score": 0.7,
+      "rank_velocity_score": 58,
+      "risk_score": 92,
+      "data_confidence": 91,
+      "ret_15m": 0.003,
+      "ret_1h": 0.012,
+      "ret_4h": 0.028,
+      "ret_24h": 0.039,
+      "ret_1w": -0.052,
+      "ret_1mo": null,
+      "ret_since_anchor": 0.032,
+      "aqv_6d_m": 41,
+      "aqv_12d_m": 38,
+      "aqv_26d_m": 33,
+      "circulating_supply": 8100000000000.0,
+      "market_cap_coingecko": 67000000,
+      "market_cap_calculated": 66000000,
+      "supply_source": "CG",
+      "data_mode": "CACHE_FRESH",
+      "supply_as_of_utc": "2026-08-10T05:58:00Z",
+      "mapping_confidence": 1.0,
+      "risk_flags": [
+        "S9"
+      ],
+      "reason_codes": [
+        "VOL_EXP"
+      ],
+      "not_confirmed_reasons": [
+        "SS<70"
+      ],
+      "ref_price": 0.0082,
+      "market_rank": 2,
+      "tier_rank": 3,
+      "market_cap_tier": "T4",
+      "coingecko_coin_id": "yyy-token",
+      "qualified_path": "S",
+      "confirmed_path": null,
+      "ready_confirm": false
+    }
+  ],
+  "short_pool": [],
+  "transitions": [
+    {
+      "id": "tr-1",
+      "at_utc": "2026-08-10T06:00:00Z",
+      "symbol": "XXXUSDT",
+      "from_state": "QUALIFIED",
+      "to_state": "CONFIRMED",
+      "direction": "up",
+      "reason_codes": [
+        "SS3",
+        "TIME_OK"
+      ]
+    }
+  ],
+  "generated_at_utc": "2026-08-10T06:16:52Z",
+  "expires_at_utc": "2026-08-10T06:30:00Z",
+  "attribution": "Powered by CoinGecko"
+}

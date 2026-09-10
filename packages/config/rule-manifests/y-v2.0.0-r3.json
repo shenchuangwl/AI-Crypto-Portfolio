@@ -1,0 +1,41 @@
+{
+  "$comment": [
+    "不可变 RuleManifest —— 《选币榜Y》一致性等式的左半边（文档 B §3.1/§5.1）。",
+    "发布后只增不改：任何逻辑变化必须递增 rule_revision 并发新文件，",
+    "禁止同名版本静默覆盖（文档 A §20【上线阻断】）。",
+    "effective_from_* 只允许落在 00:00 UTC 周期边界（文档 B §3.3）。"
+  ],
+  "schema": "rule-manifest-v1",
+  "board_key": "y",
+  "parameter_version": "param-v2.0.0-screener-y",
+  "rule_revision": "y-v2.0.0-r3",
+  "config_hash": "sha256:e304b95da19bd49acd5348f24de8860be170a4587927566848b65d699555d4ef",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "22b0e511da3178e87d7adf51a25b37ee881a72ce",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-03T00:00:00Z",
+  "effective_from_scan_id": "20260903-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": true,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": true
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_fcea251fa94122fe",
+  "notes": [
+    "【逻辑变更】216 流通市值主导层落地：三周期 A–F 等级成为《选币榜Y》准入/退出/分区/优先级/排序的第一裁决；动能（S_MC、M、SS）降为只能否决或软化的辅助条件。",
+    "新增 coin_selection.mcap_dominance：维度谓词 P1/P2/P3、SS×流通市值互印证、W_base/W_prio/W_K/W_combo/W_final/RankKey。三条不变量由 test_mcap_dominance.py 的 32 项穷举钉住。",
+    "授权：mcap_zone_mode=on 单独不足以启用，必须同时提供 mcap_zone_authorization=y-v2.0.0-r3-mcap-dominant。令牌与 mcap_dmr_ceiling_min 都进 config_hash。未授权/mode!=on/映射加载失败/配置越界 → McapDominanceError，Y 拒绝出数（快照/inbox/账本一字节不写）。",
+    "mcap_dmr_ceiling_min=CONFIRMED：文档A §5 写「ceiling 允许」、§10.2/§14/§19 写「必须等于 DMR」，SOL5.6 版 notes#6 已列为措辞不一致。本轮按回测择优取 §5 读法 —— 16.8 天窗口实测 ceiling>=确定 的 PF 0.911 优于 ceiling=DMR 的 0.896。",
+    "【回测如实记录】本配置在 1615 节点/16.8 天窗口：DMR n=1066，胜率 37.90%，盈亏比 1.466，PF 0.911；现网基线 E0 为 n=2362，39.20%，1.387，0.909。盈亏比与 PF 改善，胜率下降 1.30pp —— 三要素未同时提升，PF 仍 < 1。不得据此宣称达标。",
+    "【限制条件】实测窗口内 68.7% 币种流通供应量恒定、其余最大变动 0.90%，故 A–F 等级与价格均线排列近似等价（文档A §2 第6条已预警）。本层在当前数据上实质是三周期价格趋势对齐过滤器，不构成独立市值 Alpha。",
+    "【文档B §8 阶段门未满足】权重层窗口 18.3 天 < 31，组合层 10.7 天 < 31，完整日聚类 19 < 20。本次启用是业务方明确裁决下的越门操作，非门已通过。",
+    "生效前修订（2026-09-02T23:08:03Z）：code_commit 由 da8b4d73 更正为真实部署提交 22b0e511。先例见 f4a5a0e 对 r2 的同类修订；r3 尚未跨过 2026-09-03T00:00Z 生效边界，因此这不是对已生效规则的改写。修订后 identity_status 可回到 MATCH。"
+  ],
+  "manifest_hash": "sha256:afb7eb6961ee30e961a28bb67c6a4ce5ddd6b2e93190523b46163b50ebdd3f22"
+}

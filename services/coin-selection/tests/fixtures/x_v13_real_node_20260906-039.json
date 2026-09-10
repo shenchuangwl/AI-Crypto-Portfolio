@@ -1,0 +1,129 @@
+{
+  "$comment": [
+    "选币榜X 真实节点冻结夹具，用于把「216 只排除、不改四区」钉在真实数据上。",
+    "来源：data/coin-selection-x/snapshots/20260906-039.json（生产 X 板面，param_hash=pf1_b2d6cd1ec88bf4af，规则身份 x-v1.3.0-r1）。",
+    "只取真实的 symbol / direction / mcap_combo_code / mcap_ceiling_zone / state / 四个打分列。",
+    "data_quality_score / supply_missing / liquidity_hard_pass 不在公开快照列里，",
+    "夹具按「CONFIRMED 的必要条件必然已满足」补为通过值（DQ=60 / False / True）——",
+    "这三项的边界由 test_x_v13_dmr.py 的合成用例单独覆盖，不靠本夹具。"
+  ],
+  "source_snapshot": "data/coin-selection-x/snapshots/20260906-039.json",
+  "scan_id": "20260906-039",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "ceiling_is_dmr": [
+    {
+      "symbol": "ACEUSDT",
+      "direction": "down",
+      "combo": "FFF",
+      "ceiling": "DMR",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 63.01661715244181,
+      "mom": 67.08250079871452,
+      "cons": 1.0,
+      "score": 74.23404010638038,
+      "last_price": 0.17053,
+      "dmr_selected": true
+    },
+    {
+      "symbol": "ARBUSDT",
+      "direction": "up",
+      "combo": "AAA",
+      "ceiling": "DMR",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 58.07373069775914,
+      "mom": 60.961546568102044,
+      "cons": 0.6666666666666666,
+      "score": 68.89992482929185,
+      "last_price": 0.19451,
+      "dmr_selected": false
+    },
+    {
+      "symbol": "BTRUSDT",
+      "direction": "down",
+      "combo": "EFF",
+      "ceiling": "DMR",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 70.19456714095111,
+      "mom": 59.339732313355206,
+      "cons": 0.6666666666666666,
+      "score": 69.78931004277631,
+      "last_price": 0.04861,
+      "dmr_selected": false
+    },
+    {
+      "symbol": "CLOUSDT",
+      "direction": "down",
+      "combo": "FFF",
+      "ceiling": "DMR",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 69.39186232084225,
+      "mom": 71.87782599215576,
+      "cons": 0.6666666666666666,
+      "score": 69.65650636433841,
+      "last_price": 0.10531,
+      "dmr_selected": false
+    }
+  ],
+  "ceiling_not_dmr": [
+    {
+      "symbol": "0GUSDT",
+      "direction": "up",
+      "combo": "EBE",
+      "ceiling": "ELIMINATED",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 56.819940423389895,
+      "mom": 58.31063525404883,
+      "cons": 1.0,
+      "score": 68.40406553811508,
+      "last_price": 0.1955,
+      "dmr_selected": false
+    },
+    {
+      "symbol": "4USDT",
+      "direction": "down",
+      "combo": "FAA",
+      "ceiling": "ELIMINATED",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 61.90174719425102,
+      "mom": 82.01314928128014,
+      "cons": 1.0,
+      "score": 79.59418996612176,
+      "last_price": 0.022806,
+      "dmr_selected": true
+    },
+    {
+      "symbol": "APTUSDT",
+      "direction": "up",
+      "combo": "DAA",
+      "ceiling": "CONFIRMED",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 65.59878789280071,
+      "mom": 68.88927947581823,
+      "cons": 0.6666666666666666,
+      "score": 69.35905600165037,
+      "last_price": 0.6248,
+      "dmr_selected": false
+    },
+    {
+      "symbol": "BICOUSDT",
+      "direction": "down",
+      "combo": "FFA",
+      "ceiling": "ELIMINATED",
+      "state": "CONFIRMED",
+      "path": "S",
+      "ss": 77.42343947702341,
+      "mom": 69.55472020691084,
+      "cons": 1.0,
+      "score": 76.48361870576993,
+      "last_price": 0.02216,
+      "dmr_selected": true
+    }
+  ]
+}

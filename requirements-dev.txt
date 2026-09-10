@@ -1,0 +1,5 @@
+# Development / test extras.
+# 多数单测是 stdlib runner（直接 python 文件即可跑），但 OnlyCoin 系列
+# （services/coin-selection/tests/test_onlycoin_*.py）使用 pytest。
+-r requirements.txt
+pytest>=8.0

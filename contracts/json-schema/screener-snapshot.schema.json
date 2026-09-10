@@ -1,0 +1,1142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/schemas/screener-snapshot.schema.json",
+  "title": "ScreenerSnapshot",
+  "description": "GET /screener/latest response. Aligns with design v1.2 §37 board + frontend F1 types (state WATCH not OBSERVE).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "long_pool",
+    "short_pool",
+    "transitions",
+    "generated_at_utc",
+    "expires_at_utc"
+  ],
+  "properties": {
+    "meta": {
+      "$ref": "#/$defs/ScanMeta"
+    },
+    "long_pool": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CandidateRow"
+      }
+    },
+    "short_pool": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CandidateRow"
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TransitionEvent"
+      }
+    },
+    "generated_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Typically scan_timestamp_utc + 15 minutes"
+    },
+    "attribution": {
+      "type": "string",
+      "default": "Powered by CoinGecko"
+    }
+  },
+  "$defs": {
+    "Direction": {
+      "type": "string",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
+    "ScreenerState": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "WATCH",
+        "QUALIFIED",
+        "CONFIRMED",
+        "ELIMINATED",
+        "DATA_INSUFFICIENT",
+        "LOW_CONFIDENCE"
+      ]
+    },
+    "DataMode": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "CACHE_FRESH",
+        "CACHE_STALE",
+        "SUPPLY_CACHE_PRICE_LIVE",
+        "MISSING",
+        "BACKFILL"
+      ]
+    },
+    "LiquidityGrade": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "UNCLASSIFIED"
+      ]
+    },
+    "ScanMeta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system_version",
+        "anchor_date",
+        "scan_id",
+        "scan_sequence",
+        "scan_timestamp_utc",
+        "effective_universe",
+        "baseline_universe",
+        "regime",
+        "regime_label",
+        "data_mode",
+        "state_counts",
+        "coingecko_credits",
+        "parameter_version",
+        "mapping_version",
+        "data_version"
+      ],
+      "properties": {
+        "system_version": {
+          "type": "string",
+          "examples": [
+            "v1.2"
+          ]
+        },
+        "anchor_date": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "UTC calendar date of 00:00 anchor"
+        },
+        "scan_id": {
+          "type": "string",
+          "pattern": "^\\d{8}-\\d{3}$",
+          "examples": [
+            "20260810-025"
+          ]
+        },
+        "scan_sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 95
+        },
+        "scan_timestamp_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "effective_universe": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_universe": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "regime": {
+          "type": "number"
+        },
+        "regime_label": {
+          "type": "string"
+        },
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "state_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "coingecko_credits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "used_today",
+            "month_est",
+            "month_cap",
+            "utilization",
+            "alert_level"
+          ],
+          "properties": {
+            "used_today": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "month_est": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "month_cap": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "utilization": {
+              "type": "number",
+              "minimum": 0
+            },
+            "alert_level": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "warn",
+                "critical"
+              ]
+            }
+          }
+        },
+        "parameter_version": {
+          "type": "string"
+        },
+        "board_key": {
+          "type": "string",
+          "description": "板面 key（非枚举）：main=选币榜v1.4.0；x=选币榜X v1.3.0，当前策略复刻 main、shadow 仅观察、独立复盘闭环；y=选币榜Y v2.0.0。缺省视为 main，主榜产物不改。唯一演进入口是 board-variants.json 对应 overrides 并同步 YAML。"
+        },
+        "board_label": {
+          "type": "string",
+          "description": "板面中文名（选币榜 / 选币榜Y），只作展示与排障用。"
+        },
+        "board_projected": {
+          "type": "boolean",
+          "description": "true = 该板面由主扫描的 G1–G4 结果投影得出（不额外打交易所接口），而非自己跑一遍取数。"
+        },
+        "dmr_executable": {
+          "type": "boolean",
+          "description": "false = 该板面的 DMR 候选禁止被 dmr-adapter 消费（独立 inbox 目录 + 不在 DMR_PARAM_WHITELIST）。选币榜Y 即为 false。"
+        },
+        "mapping_version": {
+          "type": "string"
+        },
+        "data_version": {
+          "type": "string"
+        },
+        "indicator_version": {
+          "type": "string"
+        },
+        "occupancy": {
+          "type": "object"
+        },
+        "control": {
+          "type": "object"
+        },
+        "dmr": {
+          "type": "object"
+        },
+        "hierarchy": {
+          "type": "object"
+        },
+        "alert": {
+          "type": "string"
+        },
+        "daily_unique": {
+          "type": "object",
+          "description": "Per-anchor-day unique-symbol roll-up. Must be displayed next to occupancy (计划 §13.4)."
+        },
+        "alerts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gate1": {
+          "type": "object",
+          "description": "per-gate run stats (diagnostic)"
+        },
+        "gate2": {
+          "type": "object",
+          "description": "per-gate run stats (diagnostic)"
+        },
+        "gate3": {
+          "type": "object",
+          "description": "per-gate run stats (diagnostic)"
+        },
+        "gate4": {
+          "type": "object",
+          "description": "per-gate run stats (diagnostic)"
+        },
+        "universe_version": {
+          "type": "string"
+        },
+        "api_source": {
+          "type": "string",
+          "description": "gateway-injected snapshot origin"
+        },
+        "confirmed_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "gateway-injected convenience count"
+        },
+        "mcap_tf": {
+          "type": "object",
+          "description": "30m/2h/6h 流通市值等级列的本轮运行统计（展示列，不参与选币判定）"
+        },
+        "long_ret": {
+          "type": "object",
+          "description": "1Week/1Month 涨跌幅列的本轮运行统计（展示列，不参与选币判定）"
+        },
+        "param_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "参数指纹 pf1_<sha256[:16]>（文档B §3.1）。旧快照不带此键仍然合法；复盘回放据此拒绝混参出数。"
+        },
+        "mcap_zone": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "216 组合天花板层声明块（文档B §3.1）。mode ∈ off|shadow|on；off 时不写此键。"
+        },
+        "cycle": {
+          "type": "object",
+          "description": "时间区（周期）状态。只有启用周期管理的板面才有：选币榜Y 是 24h 循环（起点 00:00 UTC，与 anchor_date / scan_id 的 000 号节点同一刻度）；选币榜的快照没有这个键。事实源 coin_selection/cycle_reset.py。",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "period_hours": {
+              "type": "integer"
+            },
+            "anchor_utc": {
+              "type": "string"
+            },
+            "cycle_key": {
+              "type": "string",
+              "description": "周期身份，例 20260825T0000Z；重置的幂等键"
+            },
+            "cycle_start_utc": {
+              "type": "string"
+            },
+            "cycle_end_utc": {
+              "type": "string"
+            },
+            "node_in_cycle": {
+              "type": "integer"
+            },
+            "nodes_per_cycle": {
+              "type": "integer"
+            },
+            "reset_at_this_node": {
+              "type": "boolean",
+              "description": "true = 本节点清空了全部分区并从零重建；账本会给该节点的退出打 CYCLE_RESET"
+            },
+            "last_reset_cycle_key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "last_reset_scan_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "last_reset_at_utc": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "closed_zones": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "cleared": {
+              "type": "object"
+            },
+            "warmup": {
+              "type": "object"
+            },
+            "last_reset_node_in_cycle": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "partial_cycle": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "true = 本周期的分区不是从 0 号节点开始重建的（首次启用周期管理，或循环停机跨过了周期节点）"
+            },
+            "partial_reason": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "cold_start",
+                "missed_cycle_node",
+                null
+              ]
+            }
+          }
+        },
+        "mcap_effective": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "SOL5.6 口径有效区层声明块 + 统计（文档B §8.1）"
+        },
+        "rule_identity": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "description": "不可变规则身份：rule_revision / config_hash / asset_mapping_version / mcap_mapping_version / mapping_hash / code_commit / data_contract_version / universe_policy_version / effective_from_*（文档A §13.1 / 文档B §3.2）"
+        }
+      }
+    },
+    "CandidateRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "symbol",
+        "underlying_asset",
+        "canonical_asset_id",
+        "contract_multiplier",
+        "direction",
+        "state",
+        "state_enter_time_utc",
+        "state_duration_minutes",
+        "score_up",
+        "score_down",
+        "direction_confidence",
+        "liquidity_score",
+        "liquidity_grade",
+        "momentum_score",
+        "mcap_momentum_score",
+        "staircase_score",
+        "consistency_score",
+        "rank_velocity_score",
+        "risk_score",
+        "data_confidence",
+        "ret_15m",
+        "ret_1h",
+        "ret_4h",
+        "ret_24h",
+        "ret_since_anchor",
+        "aqv_6d_m",
+        "aqv_12d_m",
+        "aqv_26d_m",
+        "circulating_supply",
+        "market_cap_coingecko",
+        "market_cap_calculated",
+        "supply_source",
+        "data_mode",
+        "supply_as_of_utc",
+        "mapping_confidence",
+        "risk_flags",
+        "reason_codes",
+        "not_confirmed_reasons"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "symbol": {
+          "type": "string",
+          "examples": [
+            "BTCUSDT"
+          ]
+        },
+        "underlying_asset": {
+          "type": "string"
+        },
+        "canonical_asset_id": {
+          "type": "string"
+        },
+        "contract_multiplier": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "state": {
+          "$ref": "#/$defs/ScreenerState"
+        },
+        "state_enter_time_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state_duration_minutes": {
+          "type": "number",
+          "minimum": 0
+        },
+        "state_enter_price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Last/mark when this side first entered current QUALIFIED or CONFIRMED"
+        },
+        "score_up": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "score_down": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "direction_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "liquidity_score": {
+          "type": "number"
+        },
+        "liquidity_grade": {
+          "$ref": "#/$defs/LiquidityGrade"
+        },
+        "mcap_grade_30m": {
+          "$ref": "#/$defs/McapTfGrade"
+        },
+        "mcap_grade_2h": {
+          "$ref": "#/$defs/McapTfGrade"
+        },
+        "mcap_grade_6h": {
+          "$ref": "#/$defs/McapTfGrade"
+        },
+        "mcap_tf": {
+          "$ref": "#/$defs/McapTfBlock"
+        },
+        "$comment_mcap_dominance": "216 流通市值主导层的行级审计链（rule_revision y-v2.0.0-r3 起）。三周期 A–F 等级 → 组合号 → 方向 Z10 → 共振 K → 天花板 → 谓词/互印证 → 最终分区 → RankKey。全部 optional + nullable：主导层关闭时（以及主榜 v1.4.0）后端一个键都不写，旧快照照常合法（文档B §3.2 向后兼容三条铁律）。",
+        "mcap_combo_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-F]{3}$",
+          "description": "三周期等级串，如 AAF（30m|2h|6h）"
+        },
+        "mcap_combo_no": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 216,
+          "description": "216 组合号；三周期任一 null 时为 null（文档A §9.5）"
+        },
+        "mcap_combo_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "NOT_APPLICABLE",
+            null
+          ],
+          "description": "COMPLETE / INCOMPLETE（缺周期）/ NOT_APPLICABLE（特殊态旁路）"
+        },
+        "mcap_z10": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "mcap_priority": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5,
+          "description": "|Z10| 分档优先级 1..5，分布 28/54/74/46/14（文档A §9.1）"
+        },
+        "mcap_resonance_k": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "enum": [
+            10,
+            40,
+            70,
+            100,
+            null
+          ],
+          "description": "结构共振度 K（文档A §9.2）"
+        },
+        "mcap_ceiling_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DMR",
+            "CONFIRMED",
+            "QUALIFIED",
+            "WATCH",
+            "ELIMINATED",
+            null
+          ],
+          "description": "本方向 ceiling（文档A §9.4 的 432 方向侧准入上限）"
+        },
+        "base_state": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "状态机原始 base_state（文档A §10.2：effective 不反写 base）"
+        },
+        "effective_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "CONFIRMED",
+            "QUALIFIED",
+            "WATCH",
+            "ELIMINATED",
+            "NONE",
+            "DATA_INSUFFICIENT",
+            "LOW_CONFIDENCE",
+            null
+          ],
+          "description": "max(base_rank, ceiling_rank)；DMR 是派生集合，绝不作为取值（文档A §5）"
+        },
+        "final_zone": {
+          "$comment": "P1/P2/P3 与 SS×市值互印证之后的最终分区 —— state 的来源。NONE / DATA_INSUFFICIENT / LOW_CONFIDENCE 是**特殊态原样旁路**（mcap_dominance.py 的 BYPASS_STATES，文档A §5）：它们不进五区、不参与排序权重，但会原样出现在这里，因此值域比 McapZone 宽。",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DMR",
+            "CONFIRMED",
+            "QUALIFIED",
+            "WATCH",
+            "ELIMINATED",
+            "NONE",
+            "DATA_INSUFFICIENT",
+            "LOW_CONFIDENCE",
+            null
+          ]
+        },
+        "mcap_predicate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "P1_CONFIRM",
+            "P2_SOFTEN",
+            "P3_VETO",
+            null
+          ]
+        },
+        "mcap_crosscheck": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "ALIGNED",
+            "DIVERGENT",
+            null
+          ]
+        },
+        "w_base": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "w_prio": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "w_k": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "w_combo": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "w_final": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "rank_key": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "(Score/100) × (W_final / 1.210)；不变量 RankKey <= Score/100"
+        },
+        "mcap_reason_codes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "momentum_score": {
+          "type": "number"
+        },
+        "mcap_momentum_score": {
+          "type": "number"
+        },
+        "staircase_score": {
+          "type": "number"
+        },
+        "consistency_score": {
+          "type": "number"
+        },
+        "rank_velocity_score": {
+          "type": "number"
+        },
+        "risk_score": {
+          "type": "number"
+        },
+        "data_confidence": {
+          "type": "number"
+        },
+        "ret_15m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ret_1h": {
+          "type": "number"
+        },
+        "ret_4h": {
+          "type": "number"
+        },
+        "ret_24h": {
+          "type": "number"
+        },
+        "ret_1w": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Trailing 7-day return (1Week column, between 24h and since-anchor)"
+        },
+        "ret_1mo": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Trailing 30-day return (1Month column)"
+        },
+        "ret_since_anchor": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "aqv_6d_m": {
+          "type": "number",
+          "description": "Avg quote turnover 6d in million USD"
+        },
+        "aqv_12d_m": {
+          "type": "number"
+        },
+        "aqv_26d_m": {
+          "type": "number"
+        },
+        "circulating_supply": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_cap_coingecko": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "market_cap_calculated": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "supply_source": {
+          "type": "string",
+          "enum": [
+            "CG",
+            "BINANCE_CS",
+            "CACHE",
+            "NONE"
+          ]
+        },
+        "data_mode": {
+          "$ref": "#/$defs/DataMode"
+        },
+        "supply_as_of_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "mapping_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "not_confirmed_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ref_price": {
+          "type": "number"
+        },
+        "last_price": {
+          "type": "number",
+          "description": "Optional live merge on client only; must not rewrite scores"
+        },
+        "price_change_since_scan": {
+          "type": "number"
+        },
+        "market_rank": {
+          "type": "integer"
+        },
+        "tier_rank": {
+          "type": "integer"
+        },
+        "market_cap_tier": {
+          "type": "string",
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5"
+          ]
+        },
+        "coingecko_coin_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "qualified_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confirmed_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ready_confirm": {
+          "type": "boolean"
+        },
+        "dmr_selected": {
+          "type": "boolean"
+        },
+        "mcap_combo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "30m/2h/6h 三字母组合（选币榜Y ENABLE_MCAP_ZONE=1）。主板快照不写此键。"
+        },
+        "mcap_k": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "enum": [
+            100,
+            70,
+            40,
+            10,
+            null
+          ]
+        },
+        "mcap_ceiling": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "方向侧 216 天花板中文名：DMR / 确定 / 符合 / 观察 / 淘汰"
+        },
+        "product_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "worse(SM, ceiling) 英文分区。Y 芯片读此字段；主板继续读 state。"
+        },
+        "combo_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "combo_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "30m/2h/6h 三字母组合（文档A §4）。判不出级为 null。mcap_zone_mode=off 时不写此键。"
+        },
+        "z_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "方向分 Z_direction ∈ [-3, +3]（文档A §4.2）。上涨侧 = +Z，下跌侧 = -Z。"
+        },
+        "combo_zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DMR",
+            "CONFIRMED",
+            "QUALIFIED",
+            "WATCH",
+            "ELIMINATED",
+            null
+          ],
+          "description": "216 表查出的名义天花板（不含谓词调整）。"
+        },
+        "zone_ceiling": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "DMR",
+            "CONFIRMED",
+            "QUALIFIED",
+            "WATCH",
+            "ELIMINATED",
+            null
+          ],
+          "description": "实际生效的天花板（含弃权 / P1–P3 / SS 背离）。服务端下发，前端只渲染不重算（红线第 19 条）。"
+        },
+        "effective_reason_codes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Y5_* 有效区原因码（文档A §13.2）"
+        },
+        "zone_enter_time_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "展示区（DMR / final_zone，即板面真正显示的分区）的进入时刻。与 state_enter_time_utc 的区别：后者跟随状态机 base_state。主导层关闭时不写此键。"
+        },
+        "zone_duration_minutes": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "在**当前展示区**已停留的分钟数。"
+        },
+        "zone_enter_price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "进入当前展示区时的首次印价。**不是** state_enter_price —— 后者是复盘账本的入场价来源，不得被覆写。"
+        }
+      }
+    },
+    "TransitionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "at_utc",
+        "symbol",
+        "from_state",
+        "to_state",
+        "direction",
+        "reason_codes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "from_state": {
+          "$ref": "#/$defs/ScreenerState"
+        },
+        "to_state": {
+          "$ref": "#/$defs/ScreenerState"
+        },
+        "direction": {
+          "$ref": "#/$defs/Direction"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "McapZone": {
+      "$comment": "216 天花板层的业务五区。顺序即 rank：DMR=0 最好，ELIMINATED=4 最差；合并恒为 max(rank)，只降不升。主导层关闭时该字段不出现。",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "DMR",
+        "CONFIRMED",
+        "QUALIFIED",
+        "WATCH",
+        "ELIMINATED",
+        null
+      ]
+    },
+    "McapTfGrade": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        null
+      ],
+      "description": "周期流通市值等级。A: MA6>MA12>MA26 多头排列; B: MA12>MA6>MA26 多头轻度回调; C: MA12>MA26>MA6 多头重度回调; D: MA12<MA26<MA6 空头重度回调; E: MA12<MA6<MA26 空头轻度回调; F: MA6<MA12<MA26 空头排列. MA_k = 最近 k 根当前周期 K 线流通市值的算术平均 (k=6/12/26). K 线不足 26 根或均线并列时为 null —— 不得新造等级名称."
+    },
+    "McapTfDetail": {
+      "type": "object",
+      "description": "单周期流通市值均线明细，供 tooltip 与审计使用。",
+      "properties": {
+        "grade": {
+          "$ref": "#/$defs/McapTfGrade"
+        },
+        "ma6": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "6 日(根)平均流通市值 USD; 供应量未知时 null"
+        },
+        "ma12": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ma26": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bars": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "参与计算的已收盘 K 线根数"
+        },
+        "supply_known": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "McapTfBlock": {
+      "type": "object",
+      "properties": {
+        "30m": {
+          "$ref": "#/$defs/McapTfDetail"
+        },
+        "2h": {
+          "$ref": "#/$defs/McapTfDetail"
+        },
+        "6h": {
+          "$ref": "#/$defs/McapTfDetail"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

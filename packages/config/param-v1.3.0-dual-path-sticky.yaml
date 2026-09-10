@@ -1,0 +1,91 @@
+# Frozen production parameter snapshot for dual-path QUAL/CONF.
+# Source of truth is StateConfig in
+# services/coin-selection/src/coin_selection/state_machine.py
+# Do not enable SM_FAST. Do not invent depth/spread/regime gates.
+# scan.py still hardcodes regime=0.5.
+
+version:
+  system: v1.2
+  parameter: param-v1.3.0-dual-path-sticky
+  indicator: g1g2g3g4-sm-dual-path
+  production_today: param-v1.3.0-dual-path-sticky
+  # Must also be present in the DMR adapter whitelist, otherwise v1.2 §39.3 ⑦
+  # rejects every message as a parameter drift. See DMR_PARAM_WHITELIST.
+
+anchor:
+  core_utc: "00:00"
+
+scan:
+  interval_min: 15
+  nodes_per_day: 96
+
+universe:
+  baseline_blockchain: 526
+  quote_asset: USDT
+  contract_type: PERPETUAL
+  status: TRADING
+  underlying_type_allow: [COIN]
+
+gate1_liquidity:
+  hard_floor_usd: 3000000
+  periods_days: [6, 12, 26]
+  require_all_periods: true
+
+gate4_staircase:
+  status: PROVISIONAL_REPLACEABLE
+  f2_cap: 45          # steps < 2 → SS ≤ 45  (do not remove)
+
+scoring:
+  up: {ss: 0.30, momentum: 0.25, liquidity: 0.15, mcap: 0.10, consistency: 0.10, rank: 0.05, risk: 0.05}
+  dq_cap: {base: 40, factor: 0.6}
+
+state_machine:
+  watch:                      # FROZEN v1.2
+    enter: 45
+    exit: 40
+    streak: 2
+    dwell_min: 30             # time in WATCH before QUAL upgrade
+  qualified:
+    path_s: {score: 58, ss: 50, mom: 55, supply: true}
+    path_m: {score: 62, ss: 45, mom: 65, cons: 1.00, supply: true}
+    streak: 2
+    exit: 52
+  confirmed:
+    # N1–N8 (计划 §6.3) are necessary conditions, checked before either path:
+    #   N1 liquidity_hard_pass == true   (a None/unknown G1 verdict is NOT a pass)
+    #   N2 supply present   N3 DQ>=60   N4 data_mode != MISSING
+    #   N5 current state QUALIFIED      N6 dwell>=15   N7 streak>=2 + pass_confirmed
+    #   N8 SM_FAST off in production
+    path_s: {score: 66, ss: 50, mom: 60, cons: 0.67, dq: 60, supply: true}
+    path_m: {score: 70, ss: 45, mom: 70, cons: 1.00, dq: 60, supply: true}
+    streak: 2
+    dwell_min: 15             # time in QUALIFIED before CONF upgrade
+    hold_ok: {score: 56, ss: 45, or_c1_mom: 62}
+    forbid: "SS<50 AND C<1"
+  allow_skip_levels: false
+  sm_fast: false
+
+pool:
+  dmr_consume: CONFIRMED
+  top_k_unique_coins: 16      # legal [12, 20]
+  daily_confirm_cap: null     # forbidden
+  same_symbol_tiebreak: [score_desc, ss_desc, mom_desc, symbol_asc]
+  parameter_whitelist:        # DMR adapter env DMR_PARAM_WHITELIST overrides
+    - param-v1.3.0-dual-path-sticky
+    - param-v1.2.0-g1g2g3g4-path
+
+control:
+  n_impulse_floor: 8          # pending calibration — NOT an established constant
+  live_ratio_floor: 0.80
+  occupancy_target: [10, 40]
+  universe_dev_stress: 0.10
+  # Alerts annotate; they never relax N1–N4 / F2 / the $3M floor (计划 §10.3).
+  alerts: [LOW_BREADTH, CONFIRM_UNDERFILLED, CONFIRM_OVERFLOW, DATA_STRESS, UNIVERSE_STRESS]
+
+reporting:
+  # 计划 §1.3 三口径 — the board must never publish one without the other two.
+  occupancy: per-scan unique symbols in the zone (what DMR can consume now)
+  daily_unique: unique symbols that entered the zone at least once this anchor day
+  sides: (symbol, direction) rows — the header 观察/符合/确认 N counts these
+  ready_confirm: audit label on QUALIFIED; never an offer (endpoint declares
+    consumable_by_dmr=false)

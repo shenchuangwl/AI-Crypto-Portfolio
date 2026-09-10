@@ -1,0 +1,43 @@
+{
+  "board_key": "x",
+  "parameter_version": "param-v1.3.0-screener-x",
+  "rule_revision": "x-v1.3.0-r4",
+  "config_hash": "sha256:bded7687f3f7b23d54c7869ac3914c33fb2dbae38ebdf1b3f20d6aa4c36f572c",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "22b0e511da3178e87d7adf51a25b37ee881a72ce",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-09T00:00:00Z",
+  "effective_from_scan_id": "20260909-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_7bacf9980d8fb632",
+  "notes": [
+    "候选件，未获切换授权；刻意不放 rule-manifests/。",
+    "语义：四区历史 v1.3 双通道，**确认区动能门槛 60/70 → 75/75**（两条通道同时收紧）；",
+    "DMR 仍由「确认 ∩ 基础消息条件」派生，216 做排序权重（全同向优先），非准入。",
+    "回测依据（22天/2400节点）：DMR 合计 +238.9%→+382.3%，回撤 -304.3%→-250.1%，",
+    "收益/回撤 0.79→1.53；确认区合计 -313.7%→+219.0%。",
+    "已否定：DMR 层动能门槛（-24.9%/-17.0%）、216 改回安保准入（+294.4% < +382.3%）。",
+    "仍不可执行；四区门槛外其余项与 r3 相同；样本为 22 天上涨主导行情，不宜外推下跌市。",
+    "【补做 · 非准点切换】实际执行于 2026-09-09T09:06:54.775600Z，距声明的生效边界 2026-09-09T00:00:00Z 已 547 分钟；其间 X 已按旧克隆规则产出约 37 个节点。",
+    "【未兑现前提】上述节点必须由 rebuild_screener_x_v13.py 的历史重建（--staging → --verify-staging → --promote）用 v1.3 规则重算覆盖，否则它们挂着 r2 身份却是克隆数据。重建完成前，本 revision 的当日绩效统计不可用。",
+    "【已撤回 2026-09-09T10:13:16.535590Z】",
+    "本 revision 于 2026-09-09T09:07Z 发布并完成全量历史重建（42,379 笔），",
+    "2026-09-09T10:1xZ 被 x-v1.3.0-r5 取代（216 由排序权重改回安保准入，产品选择）。",
+    "撤回原因：r5 与本件都对齐生效边界 20260909-000，而同板面共用边界会让",
+    "「哪份生效」退化为靠 rule_revision 字典序决胜负（test_rule_manifest 已钉住该不变量）。",
+    "撤回后随即以 r5 语义重建全量历史，因此本 revision 最终对应 0 笔交易，",
+    "撤回不改写任何已记录数据。发布与取代的完整时序保留在 switch-log.jsonl。",
+    "若需回到本形态：candidates/board-variants.x-r4.json 仍在，可重新发布。"
+  ],
+  "manifest_hash": "sha256:e9d7ecaaa476bc789ea310d50ef240f5d1a568d68e67086c94fccb698bd361bd"
+}

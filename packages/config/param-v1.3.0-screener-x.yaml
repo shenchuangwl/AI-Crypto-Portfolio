@@ -1,0 +1,139 @@
+# 选币榜X / 对外 v1.3.0：当前策略阈值逐字段复刻 main v1.4.0。
+# 不具有旧 param-v1.3.0-dual-path-sticky 语义；禁止复用旧标识符。
+# 本文件是人读快照，不是第二个加载入口。唯一机器调参入口：
+# packages/config/board-variants.json → boards[key=x].overrides.settings / .state_config。
+# 改 overrides 必须同一次提交同步本 YAML；未来只演进 X，不得动 main/y。
+# 独立复盘闭环：data/coin-selection-x/review/ledger.sqlite，与实时快照同源同参。
+# 两道锁：dmr_executable=false；独立 data/dmr-adapter-x/inbox；
+# param-v1.3.0-screener-x 不在 DEFAULT_PARAM_WHITELIST / DMR_PARAM_WHITELIST。
+# cycle.enabled=false；mcap_zone_mode=shadow 的 216/Z/K/天花板只观察，
+# 不参与准入/退出/分区/排序/DMR；parameter_version + shadow 指纹使 param_hash 与 main 不同。
+# Production parameter snapshot: staircase-confirmed + strict DMR subset.
+# Source of truth: services/coin-selection/src/coin_selection/state_machine.py
+version:
+  system: v1.2
+  parameter: param-v1.3.0-screener-x
+  indicator: g1g2g3g4-sm-staircase-dmr
+anchor: {core_utc: "00:00"}
+scan: {interval_min: 15, nodes_per_day: 96}
+gate1_liquidity:
+  hard_floor_usd: 3000000
+  periods_days: [6, 12, 26]
+  require_all_periods: true
+gate4_staircase:
+  status: PROVISIONAL_REPLACEABLE
+  f2_cap: 45
+  # Rotating-staircase lookback in 1h bars (§27.3). Lives in gate2.KLINE_LIMIT:
+  # Gate4 scores whatever the kline cache holds. Raised 48 -> 168 on
+  # 2026-08-22; node 20260822-071 was the last 48-bar scan. 48 bars could not
+  # contain the N_step>=2 structure §27.4 requires (only 2.1% of the Gate1 pool
+  # had one), pinning 97.9% of the universe at the F2 cap SS<=45 — below the
+  # CONFIRMED gate SS>=50. Every threshold in this file is UNCHANGED.
+  lookback_bars_1h: 168
+state_machine:
+  watch: {enter: 45, exit: 40, streak: 2, dwell_min: 30}
+  qualified:
+    path_s: {score: 58, ss: 50, mom: 55, supply: true}
+    path_m: {score: 62, ss: 45, mom: 65, cons: 1.00, supply: true}
+    streak: 2
+    exit: 52
+  confirmed:
+    hard_staircase: true
+    path_s: {score: 66, ss: 50, mom: 60, cons: 0.67, dq: 60, supply: true}
+    path_m: disabled
+    streak: 2
+    dwell_min: 15
+    hold: {score: 56, ss: 50}
+  dmr_zone:
+    source: CONFIRMED
+    require: {score: 70, ss: 55, mom: 65, cons: 0.67, dq: 70, data_mode: LIVE}
+    top_k_unique_coins: 16
+  occupancy_target: [10, 40]  # 确认去重占用告警带；不进选币谓词
+  allow_skip_levels: false
+  sm_fast: false
+hierarchy:
+  display: "DMR ⊂ CONFIRMED ⊂ QUALIFIED"
+  qualified_display_includes: [QUALIFIED, CONFIRMED]
+  confirmed_display_includes: [CONFIRMED]
+  dmr_display_equals: executable_inbox
+
+# X 的隔离/观察声明（不改变上面的 v1.4.0 策略阈值；只由注册表机器加载）。
+board_variant:
+  key: x
+  data_dir: data/coin-selection-x
+  dmr_inbox: data/dmr-adapter-x/inbox
+  dmr_executable: false
+  consumable_by_dmr: false
+  cycle: {enabled: false}
+  overrides:
+    settings: {mcap_zone_mode: shadow}
+    state_config: {}
+
+# ---------------------------------------------------------------------------
+# 候选形态：历史 v1.3 四区 + 仅作用于 DMR 的 216 约束（**尚未生效**）
+# ---------------------------------------------------------------------------
+#
+# 上面 state_machine 段描述的是**当前生产**的形态：100% 复刻 main v1.4.0。
+# 下面这一段是待授权切换的候选形态，机器片段见
+# packages/config/candidates/board-variants.x-adapted.json，切换单见同目录 README.md。
+#
+# 之所以在同一份 YAML 里并列写两套：本文件是人读快照，读者必须一眼看出
+# 「现在跑的是哪套、要切的是哪套、两者差在哪三条」。切换那一刻把 status 改成
+# ACTIVE，并把上面 state_machine 段的对应三行同步过来。
+candidate_v13_adaptation:
+  status: PENDING_AUTHORIZATION      # 未获授权；生产注册表未改，仍走 v1.4 克隆分支
+  rule_revision: x-v1.3.0-r2         # 不覆盖已发布的 r1
+  param_hash: pf1_cc6b176b336be60b   # 克隆期为 pf1_b2d6cd1ec88bf4af
+  config_hash: sha256:6ec0fa8a04c9814c9f4121775b454caedc8bcd58e9e9965756bc606b7b28a71f
+  effective_from: TBD                # 必须是 00:00 UTC 周期边界，切换时填
+
+  # 相对现网 v1.4 克隆，只改这三条；观察/符合两档在 v1.3 与 v1.4 下本就相同。
+  changes:
+    confirmed_path_m:
+      from: disabled
+      to: {score: 70, ss: 45, mom: 70, cons: 1.00, dq: 60, supply: true}
+      note: S 优先；C=1 容差 1e-9
+    confirmed_hold:
+      from: {score: 56, ss: 50}
+      to: {score: 56, ss: 45, or_c1_mom: 62}   # Score>=56 ∧ (SS>=45 ∨ (C==1 ∧ M>=62))
+      note: 允许「进门后衰减」，例如现盘记载的 SS=45 且 C=0.67
+    hard_staircase_immediate_demote:
+      from: "CONFIRMED 且 SS<50 立即降级"
+      to: 取消
+      note: 退出仍由 hold_ok 连 2 次失败裁决，不是取消退出机制
+
+  # DMR 不再用 v1.4 的强子集，改为「确认 ∩ 基础消息条件 ∩ 216 方向允许」。
+  dmr_zone:
+    from: {score: 70, ss: 55, mom: 65, cons: 0.67, dq: 70, data_mode: LIVE}
+    to:
+      source: CONFIRMED
+      basic_message_conditions: {supply: true, liquidity_hard_pass: true, dq: 60, data_mode: "!=MISSING"}
+      combo_216: direction_ceiling == DMR      # 每侧 12/216 组合
+      top_k_unique_coins: 16
+    selection_mode: confirmed-basic-216-v1.3   # SelectionSettings.dmr_selection_mode
+
+  # 216 的作用域 —— 这是本轮最要紧的一条边界。
+  combo_216_scope:
+    affects: [DMR]
+    does_not_affect: [确认区, 符合区, 观察区, 淘汰区, 候选排序, 入区时刻, 停留价, 复盘 in_zone]
+    mechanism: mcap_zone_mode 保持 shadow，天花板层只观察不改分区
+    evidence: 隔离回放 326 节点，四区/排序/入区时刻差异 0；216 排除 43 条确认边
+
+  # 已获产品裁决的两项口径差异（不再是阻塞，但必须随候选形态一起阅读）。
+  accepted_deviations:
+    g4_lookback_1h:
+      historical_v13: 48
+      accepted_actual: 168        # 与上面 gate4_staircase.lookback_bars_1h 一致
+      decision: ACCEPTED_2026-09-06
+      note: >
+        产品裁决：接受「v1.3 阈值 + 168 根输入」的适配口径。
+        因此本形态是 D1 意义上的 B（现代工程适配），**不声称**逐字复原当年语义。
+        技术原因：prepare_v13_rows 未接线，且现有 1h 缓存不含 open/close 时间戳，
+        物理上无法满足其 PIT 契约；历史快照也无原始 OHLCV，48 根只能前向生效。
+        该差异必须同时出现在 manifest notes 与验收报告中，不得省略。
+    dmr_top_k_truncation:
+      decision: ACCEPTED_2026-09-06
+      note: >
+        产品裁决：接受 Top-K 截断。216 合格集在真实节点上为 20–38，大于 top_k=16，
+        最后一刀由 Score/SS/M 排序截断决定 —— 即 216 负责淘汰，动能负责排序。
+        meta.dmr.truncated 将从长期 0 变为常态非 0，这是**预期行为**，不是缺陷。

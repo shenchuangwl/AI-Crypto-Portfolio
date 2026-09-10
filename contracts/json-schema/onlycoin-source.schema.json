@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:onlycoin-source-v1",
+  "title": "OnlyCoin atomic source-only observer snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source_id", "message_type", "enabled", "day", "business_date", "generation", "control_revision", "snapshot_revision", "sequence", "delivery_id", "snapshot_digest", "valid_until", "members", "stale", "error", "projection_revision", "coverage", "eligibility_only", "order_instruction", "dmr_executable"],
+  "properties": {
+    "schema": {"const": "onlycoin-source-v1"},
+    "source_id": {"const": "screener-y.onlycoin"},
+    "message_type": {"enum": ["SNAPSHOT", "SOURCE_DISABLED"]},
+    "enabled": {"type": "boolean"},
+    "day": {"type": "string", "format": "date"},
+    "business_date": {"type": "string", "format": "date"},
+    "generation": {"type": "integer", "minimum": 0},
+    "control_revision": {"type": "integer", "minimum": 0},
+    "snapshot_revision": {"type": "integer", "minimum": 1},
+    "sequence": {"type": "integer", "minimum": 1},
+    "delivery_id": {"type": "string", "pattern": "^screener-y\\.onlycoin:[0-9]+:[0-9]+$"},
+    "snapshot_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "valid_until": {"type": "string", "format": "date-time"},
+    "members": {"type": "array", "items": {"type": "object"}},
+    "stale": {"type": "boolean"},
+    "error": {"type": ["string", "null"]},
+    "projection_revision": {"type": ["integer", "null"], "minimum": 0},
+    "coverage": {"type": ["object", "string", "null"]},
+    "eligibility_only": {"const": true},
+    "order_instruction": {"const": false},
+    "dmr_executable": {"const": false}
+  },
+  "allOf": [
+    {"if": {"properties": {"enabled": {"const": false}}}, "then": {"properties": {"message_type": {"const": "SOURCE_DISABLED"}, "members": {"maxItems": 0}}}},
+    {"if": {"properties": {"enabled": {"const": true}}}, "then": {"properties": {"message_type": {"const": "SNAPSHOT"}}}},
+    {"if": {"properties": {"stale": {"const": true}}}, "then": {"properties": {"members": {"maxItems": 0}}}}
+  ],
+  "$defs": {
+    "control": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "expected_revision", "request_id"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "expected_revision": {"type": "integer", "minimum": 0},
+        "request_id": {"type": "string", "pattern": "\\S"},
+        "replay_policy": {"const": "current_day_snapshot"},
+        "reason": {"type": "string"}
+      }
+    },
+    "ack": {
+      "type": "object", "additionalProperties": false,
+      "required": ["consumer_id", "delivery_id", "generation", "accepted_revision", "applied_count"],
+      "properties": {
+        "consumer_id": {"const": "local-observer"},
+        "delivery_id": {"type": "string"},
+        "generation": {"type": "integer", "minimum": 0},
+        "accepted_revision": {"type": "integer", "minimum": 1},
+        "applied_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

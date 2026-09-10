@@ -1,0 +1,32 @@
+{
+  "board_key": "x",
+  "parameter_version": "param-v1.3.0-screener-x",
+  "rule_revision": "x-v1.3.0-r4",
+  "config_hash": "sha256:bded7687f3f7b23d54c7869ac3914c33fb2dbae38ebdf1b3f20d6aa4c36f572c",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "REPLACE_WITH_DEPLOYED_COMMIT",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "REPLACE_AT_SWITCH_TIME",
+  "effective_from_scan_id": "REPLACE_AT_SWITCH_TIME",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_7bacf9980d8fb632",
+  "notes": [
+    "候选件，未获切换授权；刻意不放 rule-manifests/。",
+    "语义：四区历史 v1.3 双通道，**确认区动能门槛 60/70 → 75/75**（两条通道同时收紧）；",
+    "DMR 仍由「确认 ∩ 基础消息条件」派生，216 做排序权重（全同向优先），非准入。",
+    "回测依据（22天/2400节点）：DMR 合计 +238.9%→+382.3%，回撤 -304.3%→-250.1%，",
+    "收益/回撤 0.79→1.53；确认区合计 -313.7%→+219.0%。",
+    "已否定：DMR 层动能门槛（-24.9%/-17.0%）、216 改回安保准入（+294.4% < +382.3%）。",
+    "仍不可执行；四区门槛外其余项与 r3 相同；样本为 22 天上涨主导行情，不宜外推下跌市。"
+  ]
+}

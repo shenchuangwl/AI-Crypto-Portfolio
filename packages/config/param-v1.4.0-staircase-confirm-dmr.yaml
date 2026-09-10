@@ -1,0 +1,48 @@
+# Production parameter snapshot: staircase-confirmed + strict DMR subset.
+# Source of truth: services/coin-selection/src/coin_selection/state_machine.py
+version:
+  system: v1.2
+  parameter: param-v1.4.0-staircase-confirm-dmr
+  indicator: g1g2g3g4-sm-staircase-dmr
+anchor: {core_utc: "00:00"}
+scan: {interval_min: 15, nodes_per_day: 96}
+gate1_liquidity:
+  hard_floor_usd: 3000000
+  periods_days: [6, 12, 26]
+  require_all_periods: true
+gate4_staircase:
+  status: PROVISIONAL_REPLACEABLE
+  f2_cap: 45
+  # Rotating-staircase lookback in 1h bars (§27.3). Lives in gate2.KLINE_LIMIT:
+  # Gate4 scores whatever the kline cache holds. Raised 48 -> 168 on
+  # 2026-08-22; node 20260822-071 was the last 48-bar scan. 48 bars could not
+  # contain the N_step>=2 structure §27.4 requires (only 2.1% of the Gate1 pool
+  # had one), pinning 97.9% of the universe at the F2 cap SS<=45 — below the
+  # CONFIRMED gate SS>=50. Every threshold in this file is UNCHANGED.
+  lookback_bars_1h: 168
+state_machine:
+  watch: {enter: 45, exit: 40, streak: 2, dwell_min: 30}
+  qualified:
+    path_s: {score: 58, ss: 50, mom: 55, supply: true}
+    path_m: {score: 62, ss: 45, mom: 65, cons: 1.00, supply: true}
+    streak: 2
+    exit: 52
+  confirmed:
+    hard_staircase: true
+    path_s: {score: 66, ss: 50, mom: 60, cons: 0.67, dq: 60, supply: true}
+    path_m: disabled
+    streak: 2
+    dwell_min: 15
+    hold: {score: 56, ss: 50}
+  dmr_zone:
+    source: CONFIRMED
+    require: {score: 70, ss: 55, mom: 65, cons: 0.67, dq: 70, data_mode: LIVE}
+    top_k_unique_coins: 16
+  occupancy_target: [10, 40]  # 确认去重占用告警带；不进选币谓词
+  allow_skip_levels: false
+  sm_fast: false
+hierarchy:
+  display: "DMR ⊂ CONFIRMED ⊂ QUALIFIED"
+  qualified_display_includes: [QUALIFIED, CONFIRMED]
+  confirmed_display_includes: [CONFIRMED]
+  dmr_display_equals: executable_inbox

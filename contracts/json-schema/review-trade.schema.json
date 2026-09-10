@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/schemas/review-trade.schema.json",
+  "title": "ReviewTrade",
+  "description": "One complete zone occupancy (enter+exit) or a still-open stay. trade_id = symbol|direction|zone|enter_scan_id — re-entering a zone yields a separate record (R2), and counts are never deduplicated by coin (R3).",
+  "type": "object",
+  "required": [
+    "trade_id",
+    "symbol",
+    "direction",
+    "zone",
+    "status",
+    "enter_scan_id",
+    "enter_time_utc"
+  ],
+  "properties": {
+    "trade_id": {
+      "type": "string"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "canonical_asset_id": {
+      "type": "string"
+    },
+    "underlying_asset": {
+      "type": "string"
+    },
+    "contract_multiplier": {
+      "type": "number"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "up",
+        "down"
+      ]
+    },
+    "zone": {
+      "type": "string",
+      "enum": [
+        "DMR",
+        "CONFIRMED",
+        "QUALIFIED",
+        "WATCH",
+        "ELIMINATED",
+        "DATA_INSUFFICIENT",
+        "LOW_CONFIDENCE"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "CLOSED",
+        "OPEN"
+      ],
+      "description": "OPEN stays never enter any PnL aggregate (R1)."
+    },
+    "enter_scan_id": {
+      "type": "string"
+    },
+    "enter_time_utc": {
+      "type": "string"
+    },
+    "exit_scan_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "exit_time_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "dwell_minutes": {
+      "type": "number"
+    },
+    "dwell_nodes": {
+      "type": "integer",
+      "description": "Scan nodes occupied (15m grid), not wall-clock arithmetic."
+    },
+    "enter_price": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "enter_price_source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "state_enter_price",
+        "last_price",
+        "ref_price",
+        null
+      ],
+      "description": "DMR and the three control zones must never use state_enter_price: the state machine only freezes it on entering WATCH/QUALIFIED/CONFIRMED, so for DMR it is the price of entering CONFIRMED, not of entering DMR."
+    },
+    "exit_price": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "exit_price_source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "last_price",
+        "ref_price",
+        "prev_node",
+        null
+      ],
+      "description": "prev_node = the row vanished from the board; only the price falls back, the exit is still stamped at the node where it went missing."
+    },
+    "pnl_pct": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Realized, decimal fraction (0.0231 = +2.31%). up: exit/stay-1; down: 1-exit/stay. null for OPEN or missing price."
+    },
+    "pnl_sign": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "enum": [
+        1,
+        0,
+        -1,
+        null
+      ]
+    },
+    "score": {
+      "type": "number"
+    },
+    "score_opposite": {
+      "type": "number"
+    },
+    "direction_confidence": {
+      "type": "number"
+    },
+    "liquidity_grade": {
+      "type": "string"
+    },
+    "mcap_grade_30m": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mcap_grade_2h": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mcap_grade_6h": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ret_1h": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ret_4h": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ret_24h": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ret_1w": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ret_1mo": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ret_since_anchor": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "qualified_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confirmed_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "parameter_version": {
+      "type": "string",
+      "description": "入点参数版本（非枚举）。选币榜X param-v1.3.0-screener-x 当前复刻 main v1.4.0，独立复盘闭环；不得与旧 param-v1.3.0-dual-path-sticky 混淆。后续只改 X overrides 同步 YAML，跨版本停留带 PARAM_VERSION_CHANGED。"
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "MISSING_ENTRY_PRICE",
+          "MISSING_EXIT_PRICE",
+          "ZERO_ENTRY_PRICE",
+          "VANISHED",
+          "GAP_BEFORE_EXIT",
+          "TRUNCATED_ENTER",
+          "PARAM_VERSION_CHANGED",
+          "DMR_MEMBER_FROM_INBOX",
+          "CYCLE_RESET"
+        ]
+      },
+      "description": "Data-quality markers. Rows with a missing/zero price still count as trades but are excluded from PnL aggregates. CYCLE_RESET is not a data-quality issue: it marks an exit forced by a board's 24h cycle reset (选币榜Y / param-v2.0.0), not a strategy exit."
+    },
+    "mcap_combo": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "上一轮 SOL 口径组合列（保留）"
+    },
+    "product_zone": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "min(状态机分区, 天花板) 的英文分区名"
+    },
+    "mcap_k": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "param_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "入场时生效的参数指纹（文档B §3.1）。阶段 0 之前的行为 null，不回填。"
+    },
+    "combo_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "'AAB' 等三字母；判不出级为 null"
+    },
+    "combo_zone": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "216 表查出的名义天花板"
+    },
+    "zone_ceiling": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "实际生效的天花板"
+    },
+    "z_score": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "方向分 Z_direction"
+    }
+  }
+}

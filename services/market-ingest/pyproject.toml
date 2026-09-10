@@ -1,0 +1,14 @@
+# Market Ingest Service (S2)
+# Binance USDT-M native REST + WebSocket
+# Align: design v1.2 §8
+
+[project]
+name = "market-ingest"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "websockets>=12.0",
+]
+
+[project.scripts]
+market-ingest = "market_ingest.__main__:main"

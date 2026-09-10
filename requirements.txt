@@ -1,0 +1,5 @@
+# Runtime for market-ingest / contracts / gateway helpers.
+# Selection engine and gateway stay on the stdlib + this list.
+websockets>=12.0
+pydantic>=2.0
+jsonschema>=4.0

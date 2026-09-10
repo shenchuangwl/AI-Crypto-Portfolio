@@ -1,0 +1,40 @@
+{
+  "$comment": [
+    "不可变 RuleManifest —— 《选币榜Y》一致性等式的左半边（文档 B §3.1/§5.1）。",
+    "发布后只增不改：任何逻辑变化必须递增 rule_revision 并发新文件，",
+    "禁止同名版本静默覆盖（文档 A §20【上线阻断】）。",
+    "effective_from_* 只允许落在 00:00 UTC 周期边界（文档 B §3.3）。"
+  ],
+  "schema": "rule-manifest-v1",
+  "board_key": "y",
+  "parameter_version": "param-v2.0.0-screener-y",
+  "rule_revision": "y-v2.0.0-r2",
+  "config_hash": "sha256:a85830e1bc739e961cb6a97b59b81ca0b7a3e0e732f1d5834719e95658f57731",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "NOT_APPLICABLE",
+  "mapping_hash": "NOT_APPLICABLE",
+  "code_commit": "e2bf1898be0509a65c86bd2445171997f51e8d57",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-02T00:00:00Z",
+  "effective_from_scan_id": "20260902-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": false,
+    "ENABLE_TARGET_WEIGHTS": true,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_1b44aba95de8ffe8",
+  "notes": [
+    "身份补全，非逻辑变更：规则代码与 r1 逐字节相同，唯一变化是 code_commit 从占位值 UNAVAILABLE_WORKTREE_NOT_GIT 换成真实提交 SHA。",
+    "之所以递增 revision 而不是改写 r1：文档 A §20 / 文档 B §5.1 禁止同名版本静默覆盖；r1 的占位值是「当时代码身份不可知」的诚实记录，必须原样保留。",
+    "生效边界 2026-09-02T00:00:00Z（文档 B §3.3：规则只在 00:00 UTC 周期边界生效）。切换由 rule_manifest.effective_manifest() 按 effective_from_scan_id 自动完成，不需要改代码，也不需要卡时间点重启。",
+    "ENABLE_TARGET_WEIGHTS=true 沿用第一轮已生效的目标七权重（分叉点 20260831-089→090）。",
+    "有效区层 mcap_zone_mode 仍为 off，故 mcap_mapping_version / mapping_hash 记 NOT_APPLICABLE；开层时的目标值是 mcap-216-v2.0.0-r1 / sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689。",
+    "【修订记录】r2 首次写出时把 code_commit 记成 85c20b2（当时的 HEAD）；随后为了消除「身份随每次提交漂移」又提交了部署钉定逻辑，实际部署的是 8efd0928bb81。r2 **尚未生效**（生效边界 2026-09-02T00:00:00Z 在未来、无任何数据引用它），因此在生效前显式修订为真实部署提交，并留此条记录 —— 这不是「同名版本静默覆盖」。此后 code_commit 由 data/coin-selection/deployed-commit.txt 钉定，不再随 HEAD 变动。",
+    "【修订记录 2】生效前第二次修订：把部署提交解析下沉到模块以修复守卫误拒主榜候选的缺陷，部署提交随之变为 e2bf1898be05。r2 仍未生效（边界 2026-09-02T00:00:00Z），无数据引用。此为本轮最后一次代码变更，此后 code_commit 由 deployed-commit.txt 钉定、不再随 HEAD 变动。"
+  ],
+  "manifest_hash": "sha256:edb9362d14b41890acd2feb1aa25444ec4c661890bfd1b67525b6fbd6f6a3307"
+}

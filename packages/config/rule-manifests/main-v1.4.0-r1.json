@@ -1,0 +1,35 @@
+{
+  "$comment": [
+    "不可变 RuleManifest —— 《选币榜Y》一致性等式的左半边（文档 B §3.1/§5.1）。",
+    "发布后只增不改：任何逻辑变化必须递增 rule_revision 并发新文件，",
+    "禁止同名版本静默覆盖（文档 A §20【上线阻断】）。",
+    "effective_from_* 只允许落在 00:00 UTC 周期边界（文档 B §3.3）。"
+  ],
+  "schema": "rule-manifest-v1",
+  "board_key": "main",
+  "parameter_version": "param-v1.4.0-staircase-confirm-dmr",
+  "rule_revision": "main-v1.4.0-r1",
+  "config_hash": "sha256:56a150c0f940ea496f88d98328a8b7a6f55318444c53e3fdc7792a8cabbb62b3",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "NOT_APPLICABLE",
+  "mapping_hash": "NOT_APPLICABLE",
+  "code_commit": "UNAVAILABLE_WORKTREE_NOT_GIT",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-01T00:00:00Z",
+  "effective_from_scan_id": "20260901-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": false,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": true,
+  "consumable_by_dmr": true,
+  "param_hash": "pf1_ddc6f8d09708942c",
+  "notes": [
+    "主榜参数在文档A §3 被冻结；本 manifest 只登记身份，不改变任何打分或状态机规则。",
+    "config_hash 必须与 coin_selection.scan.main_exec_identity() 现算值一致 —— adapter/executor 的三方一致性比较就是拿它做基准。"
+  ],
+  "manifest_hash": "sha256:fff43479414d86d4b5d4f41488d2f05e26a2dea40f88f64427c8d6577aff4c71"
+}

@@ -1,0 +1,28 @@
+{
+  "_comment": "Pseudo-coin / multiplier overrides. Keys = Binance base asset without USDT. Values verified via CoinGecko public API 2026-08-12.",
+  "1000SHIB": {
+    "coingecko_id": "shiba-inu",
+    "reason": "CoinGecko futures mapped to pseudo 1000shib; markets supply missing. Underlying SHIB has circulating_supply.",
+    "verified_at": "2026-08-12",
+    "verified_supply_ok": true
+  },
+  "1000BONK": {
+    "coingecko_id": "bonk",
+    "reason": "CoinGecko futures mapped to pseudo 1000bonk with supply=0. Underlying bonk has circulating_supply.",
+    "verified_at": "2026-08-12",
+    "verified_supply_ok": true
+  },
+  "1000SATS": {
+    "coingecko_id": "sats-ordinals",
+    "reason": "CoinGecko futures mapped to 1000sats-ordinals with supply null/0. Underlying sats-ordinals has circulating_supply.",
+    "verified_at": "2026-08-12",
+    "verified_supply_ok": true
+  },
+  "1000RATS": {
+    "coingecko_id": "rats",
+    "reason": "CoinGecko futures mapped to pseudo 1000rats. Public id 'rats' currently returns circulating_supply=0/mcap=0 (2026-08-12) — still supply-missing until CG updates or secondary source.",
+    "verified_at": "2026-08-12",
+    "verified_supply_ok": false,
+    "note": "May need manual/enterprise CG or Binance cs fallback later"
+  }
+}

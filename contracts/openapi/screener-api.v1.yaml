@@ -1,0 +1,734 @@
+openapi: 3.0.3
+info:
+  title: Hermes Screener & Market API
+  version: 1.0.0
+  description: |
+    Read-only screener snapshots and market series for the Binance USDT-perp
+    auto coin-selection system (design v1.2). Selection gates run server-side only.
+    DMR execution consumes a separate candidate message schema (see dmr-candidate-message).
+
+    **Board variants.** Every `/screener/*` path below also exists verbatim under
+    `/screener-y/*` — the 选币榜Y board, parameter version `param-v2.0.0-screener-y`.
+    Same shapes, same semantics, different data directory and DMR inbox; its
+    `confirmed.consumable_by_dmr` is always false. The registry lives in
+    `packages/config/board-variants.json` and is served by `GET /boards`.
+    选币榜X (`/screener-x/*`, `param-v1.3.0-screener-x`) 当前复刻 main v1.4.0，
+    独立目录 `data/coin-selection-x` 与复盘闭环；并非旧 dual-path-sticky。
+    X 仅 shadow 展示 216/Z/K/天花板，不改状态/排序/DMR，cycle.enabled=false。
+    后续唯一机器调参入口 boards[key=x].overrides，必须同步 X YAML 与新 rule revision。
+    Y 已启用目标七权重与 216 主导层 on，且 24h / 00:00 UTC 重置；不是 main 的克隆。
+    main 无 meta.cycle；X 显式写 enabled=false；必须按 enabled 判断能力。
+    Review endpoints select the matching ledger with `?board=main|x|y`; exits forced by a
+    cycle reset carry the `CYCLE_RESET` flag.
+  contact:
+    name: Hermes Binance Web
+servers:
+  - url: http://127.0.0.1:8080/api/v1
+    description: Local api-gateway
+tags:
+  - name: screener
+  - name: market
+  - name: dmr
+  - name: review
+paths:
+  /boards:
+    get:
+      tags: [screener]
+      operationId: listBoards
+      summary: Board variant registry (选币榜 / 选币榜X / 选币榜Y)
+      description: >
+        One entry per board variant. `api_prefix` is the screener prefix to call,
+        `web_route` the SPA route, `parameter_version` the ruleset it publishes,
+        and `dmr_executable=false` marks a board whose DMR inbox must never be
+        consumed by the execution layer.
+      responses:
+        '200':
+          description: Registry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count, boards]
+                properties:
+                  count: { type: integer }
+                  boards:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, label, parameter_version, api_prefix, web_route]
+                      properties:
+                        key: { type: string, example: x }
+                        label: { type: string, example: 选币榜X }
+                        short_label: { type: string }
+                        parameter_version: { type: string, example: param-v1.3.0-screener-x }
+                        param_file: { type: string }
+                        api_prefix: { type: string, example: /api/v1/screener-x }
+                        web_route: { type: string, example: /screener-x }
+                        data_dir: { type: string, example: data/coin-selection-x }
+                        dmr_inbox: { type: string, example: data/dmr-adapter-x/inbox }
+                        primary: { type: boolean }
+                        projected:
+                          type: boolean
+                          description: Derived from the primary scan's G1–G4 results, no extra exchange calls.
+                        dmr_executable: { type: boolean }
+                        enabled: { type: boolean }
+                        settings_overrides:
+                          type: object
+                          description: SelectionSettings deltas — the only machine entry point for v2.0.0 tuning.
+                        state_config_overrides:
+                          type: object
+                          description: StateConfig deltas (zone thresholds, dwell, streak, DMR zone).
+                        latest_exists: { type: boolean }
+                        ledger_exists: { type: boolean }
+
+  /screener/latest:
+    get:
+      tags: [screener]
+      operationId: getScreenerLatest
+      summary: Latest 15m scan snapshot (board)
+      description: |
+        Full long/short pools for the latest completed scan.
+        Clients must treat scores/states as immutable for this scan_id.
+        Prefer refetch after WS event `screener.updated` rather than polling < 5s.
+      parameters:
+        - name: include_isolated
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: If false, server may omit ELIMINATED/DATA_INSUFFICIENT/LOW_CONFIDENCE from pools (still counted in meta.state_counts).
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../json-schema/screener-snapshot.schema.json'
+              examples:
+                sample:
+                  $ref: '../examples/screener-latest.example.json'
+        '204':
+          description: No completed scan yet
+        '503':
+          description: Scan subsystem unavailable
+
+  /screener/ready-confirm:
+    get:
+      tags: [screener]
+      operationId: listReadyConfirm
+      summary: QUALIFIED rows that already meet pass_confirmed but still owe dwell/streak
+      description: |
+        计划 §10.2 "不足" side output. This is an **audit** view on the QUALIFIED
+        zone, not a second offer zone: `consumable_by_dmr` is always false and the
+        DMR inbox stays CONFIRMED-only (计划 P6).
+      responses:
+        '200':
+          description: Ready-to-confirm rows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scan_id, consumable_by_dmr, count, rows]
+                properties:
+                  scan_id: { type: string }
+                  scan_timestamp_utc: { type: string, format: date-time }
+                  api_source: { type: string }
+                  consumable_by_dmr: { type: boolean, enum: [false] }
+                  count: { type: integer, minimum: 0 }
+                  rows:
+                    type: array
+                    items:
+                      $ref: '../json-schema/screener-snapshot.schema.json#/$defs/CandidateRow'
+                  note: { type: string }
+
+  /screener/scans/{scan_id}:
+    get:
+      tags: [screener]
+      operationId: getScreenerScan
+      summary: Snapshot by scan_id (immutable history)
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: '20260810-025'
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../json-schema/screener-snapshot.schema.json'
+        '404':
+          description: Unknown scan_id
+
+  /screener/symbols/{symbol}:
+    get:
+      tags: [screener]
+      operationId: getScreenerSymbol
+      summary: Symbol detail + path for current anchor day
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [up, down]
+            default: up
+        - name: scan_id
+          in: query
+          schema:
+            type: string
+          description: Optional pin to a scan; default latest
+      responses:
+        '200':
+          description: Symbol screener detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymbolScreenerDetail'
+        '404':
+          description: Symbol not in universe for that scan
+
+  /market/{symbol}/klines:
+    get:
+      tags: [market]
+      operationId: getKlines
+      summary: OHLCV bars (closed candles only for indicator use)
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: interval
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [15m, 30m, 1h, 2h, 4h, 6h, 1d]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1500
+            default: 200
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: UTC ISO; exclusive upper bound
+      responses:
+        '200':
+          description: Bars ascending by time
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [symbol, interval, bars]
+                properties:
+                  symbol:
+                    type: string
+                  interval:
+                    type: string
+                  bars:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OhlcvBar'
+
+  /dmr/candidates:
+    get:
+      tags: [dmr]
+      operationId: listDmrCandidates
+      summary: Pull DMR candidate messages by scan (executor backfill)
+      parameters:
+        - name: scan_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [CONFIRMED, QUALIFIED, WATCH]
+            default: CONFIRMED
+      responses:
+        '200':
+          description: Candidate list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scan_id, messages]
+                properties:
+                  scan_id:
+                    type: string
+                  messages:
+                    type: array
+                    items:
+                      $ref: '../json-schema/dmr-candidate-message.schema.json'
+
+  /review/coverage:
+    get:
+      tags: [review]
+      operationId: getReviewCoverage
+      summary: Review ledger coverage, field availability, param segments, freshness
+      description: >
+        Physical snapshot window, per-zone availability, first-seen node per
+        drifting field, parameter-version segments, and ledger freshness vs the
+        live scan head. Cheap enough to call on page init before any trade query.
+      parameters:
+        - $ref: '#/components/parameters/ReviewBoard'
+        - $ref: '#/components/parameters/ReviewExcludeFlags'
+        - $ref: '#/components/parameters/ReviewCycles'
+        - $ref: '#/components/parameters/ReviewWholeCycles'
+        - $ref: '#/components/parameters/ReviewFrom'
+        - $ref: '#/components/parameters/ReviewTo'
+        - $ref: '#/components/parameters/ReviewZones'
+      responses:
+        '200':
+          description: Coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewCoverage'
+        '503':
+          description: ledger_not_ready
+
+  /review/summary:
+    get:
+      tags: [review]
+      operationId: getReviewSummary
+      summary: Closed-trade stats for zone × direction × coin × window
+      description: >
+        Aggregates are always CLOSED-only (R1). `trades` counts complete
+        enter+exit records and is never deduplicated by coin; combining zones
+        ADDS counts, unlike /screener which unions and dedupes.
+      parameters:
+        - $ref: '#/components/parameters/ReviewBoard'
+        - $ref: '#/components/parameters/ReviewExcludeFlags'
+        - $ref: '#/components/parameters/ReviewCycles'
+        - $ref: '#/components/parameters/ReviewWholeCycles'
+        - $ref: '#/components/parameters/ReviewZones'
+        - $ref: '#/components/parameters/ReviewPreset'
+        - $ref: '#/components/parameters/ReviewDirection'
+        - $ref: '#/components/parameters/ReviewSymbols'
+        - $ref: '#/components/parameters/ReviewFrom'
+        - $ref: '#/components/parameters/ReviewTo'
+        - $ref: '#/components/parameters/ReviewAttribution'
+        - $ref: '#/components/parameters/ReviewMinDwell'
+        - $ref: '#/components/parameters/ReviewOnlyFlagged'
+        - $ref: '#/components/parameters/ReviewParamVersion'
+      responses:
+        '200':
+          description: Summary + coverage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewEnvelope'
+        '503':
+          description: ledger_not_ready
+
+  /review/trades:
+    get:
+      tags: [review]
+      operationId: listReviewTrades
+      summary: Paginated ReviewTrade rows (complete enter+exit, optional OPEN)
+      description: >
+        Ordering is applied in SQL over the whole window, never over the returned
+        page. `total` is the unpaginated row count and `truncated` says whether
+        rows were left behind.
+      parameters:
+        - $ref: '#/components/parameters/ReviewBoard'
+        - $ref: '#/components/parameters/ReviewExcludeFlags'
+        - $ref: '#/components/parameters/ReviewCycles'
+        - $ref: '#/components/parameters/ReviewWholeCycles'
+        - $ref: '#/components/parameters/ReviewZones'
+        - $ref: '#/components/parameters/ReviewPreset'
+        - $ref: '#/components/parameters/ReviewDirection'
+        - $ref: '#/components/parameters/ReviewSymbols'
+        - $ref: '#/components/parameters/ReviewFrom'
+        - $ref: '#/components/parameters/ReviewTo'
+        - $ref: '#/components/parameters/ReviewAttribution'
+        - $ref: '#/components/parameters/ReviewMinDwell'
+        - $ref: '#/components/parameters/ReviewOnlyFlagged'
+        - $ref: '#/components/parameters/ReviewParamVersion'
+        - $ref: '#/components/parameters/ReviewIncludeOpen'
+        - $ref: '#/components/parameters/ReviewSort'
+        - $ref: '#/components/parameters/ReviewDesc'
+        - $ref: '#/components/parameters/ReviewLimit'
+        - $ref: '#/components/parameters/ReviewOffset'
+      responses:
+        '200':
+          description: Trades
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ReviewEnvelope'
+                  - type: object
+                    properties:
+                      trades:
+                        type: array
+                        items:
+                          $ref: '../json-schema/review-trade.schema.json'
+                      count: { type: integer, description: rows in this page }
+                      total: { type: integer, description: rows matching the filter, ignoring limit/offset }
+                      truncated: { type: boolean }
+                      offset: { type: integer }
+                      limit: { type: integer }
+        '503':
+          description: ledger_not_ready
+
+  /review/symbols/{symbol}:
+    get:
+      tags: [review]
+      operationId: getReviewSymbol
+      summary: Per-symbol review trades (same envelope, symbols filter pinned)
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/ReviewBoard'
+        - $ref: '#/components/parameters/ReviewExcludeFlags'
+        - $ref: '#/components/parameters/ReviewCycles'
+        - $ref: '#/components/parameters/ReviewWholeCycles'
+        - $ref: '#/components/parameters/ReviewZones'
+        - $ref: '#/components/parameters/ReviewFrom'
+        - $ref: '#/components/parameters/ReviewTo'
+        - $ref: '#/components/parameters/ReviewAttribution'
+      responses:
+        '200':
+          description: Symbol trades
+        '503':
+          description: ledger_not_ready
+
+components:
+  parameters:
+    ReviewBoard:
+      name: board
+      in: query
+      description: >
+        Ruleset ledger to read. `main` = 选币榜 / param-v1.4.0 (default),
+        `y` = 选币榜Y / param-v2.0.0. Each board has its own sqlite ledger; they are
+        never merged — mixing rulesets makes any win-rate meaningless. Unknown
+        values fall back to `main`. Alias: `ruleset`.
+      schema:
+        type: string
+        # X v1.3.0 复刻 main v1.4.0，独立复盘；演进只经 X overrides + YAML。
+        enum: [main, x, y]
+        default: main
+    ReviewCycles:
+      name: cycles
+      in: query
+      description: >
+        Cycle-aligned window: the most recent N cycles. Only meaningful for a board
+        with time-cycle management (`board=y`); when present the server recomputes
+        `from`/`to` on the CycleConfig grid and overrides them. A no-op for `board=main`.
+        Rolling "watermark minus N x 24h" windows cut a cycle in half at midnight and
+        pull the previous cycle's reset-forced closes in, which flips the sign of the
+        average return — hence the grid lives server-side only.
+      schema: { type: integer, minimum: 1, maximum: 366 }
+    ReviewWholeCycles:
+      name: whole_cycles
+      in: query
+      description: With `cycles`, count only cycles that have fully elapsed (exclude the in-progress one).
+      schema: { type: boolean, default: false }
+    ReviewExcludeFlags:
+      name: exclude_flags
+      in: query
+      description: >
+        CSV of ReviewFlag values to drop from results and aggregates. Main use is
+        `CYCLE_RESET`: exits forced by 选币榜Y's 24h cycle reset are not strategy
+        decisions, and leaving them in distorts win rate and average return.
+        A no-op for `board=main`, whose ledger never carries that flag.
+      schema:
+        type: string
+        example: CYCLE_RESET
+    ReviewZones:
+      name: zones
+      in: query
+      description: CSV of ReviewZone. Overrides `preset`. Default DMR,CONFIRMED.
+      schema: { type: string, example: 'DMR,CONFIRMED' }
+    ReviewPreset:
+      name: preset
+      in: query
+      schema: { type: string, enum: [executable, funnel, control], default: executable }
+    ReviewDirection:
+      name: direction
+      in: query
+      schema: { type: string, enum: [up, down, both], default: both }
+    ReviewSymbols:
+      name: symbols
+      in: query
+      description: CSV of canonical_asset_id or symbol; empty = all coins.
+      schema: { type: string }
+    ReviewFrom:
+      name: from
+      in: query
+      description: Window start, UTC ISO8601. Naive values are read as UTC and canonicalised.
+      schema: { type: string, format: date-time }
+    ReviewTo:
+      name: to
+      in: query
+      description: Window end, UTC ISO8601. Defaults to the ledger watermark, not the wall clock.
+      schema: { type: string, format: date-time }
+    ReviewAttribution:
+      name: attribution
+      in: query
+      description: >
+        Which timestamp decides the window. `exit` = realized in this window
+        (default, matches a broker statement). `enter` = picked in this window.
+        `contained` = both ends inside, CLOSED only.
+      schema: { type: string, enum: [exit, enter, contained], default: exit }
+    ReviewIncludeOpen:
+      name: include_open
+      in: query
+      description: Append OPEN stays to the row list. They never enter any aggregate (R1).
+      schema: { type: string, default: '0' }
+    ReviewOnlyFlagged:
+      name: only_flagged
+      in: query
+      description: Only rows carrying a ReviewFlag (missing price / VANISHED / GAP / cross-version).
+      schema: { type: string, default: '0' }
+    ReviewParamVersion:
+      name: pv
+      in: query
+      description: >
+        CSV of parameter_version. Filters on the trade's ENTRY version — the
+        standard it was selected under. Empty or `all` = no filter. Aggregating
+        across versions is not meaningful: the selection thresholds themselves changed.
+      schema: { type: string }
+    ReviewMinDwell:
+      name: min_dwell_nodes
+      in: query
+      description: Drop stays shorter than N 15m nodes. Applies to aggregates and open counts too.
+      schema: { type: integer, default: 0 }
+    ReviewSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        default: enter_time_utc
+        enum: [enter_time_utc, exit_time_utc, dwell_minutes, dwell_nodes, pnl_pct, pnl_sign,
+               score, direction_confidence, symbol, zone, enter_price, exit_price]
+    ReviewDesc:
+      name: desc
+      in: query
+      schema: { type: string, default: '0' }
+    ReviewLimit:
+      name: limit
+      in: query
+      schema: { type: integer, default: 500, maximum: 5000 }
+    ReviewOffset:
+      name: offset
+      in: query
+      schema: { type: integer, default: 0 }
+
+  schemas:
+    ReviewCoverage:
+      type: object
+      properties:
+        watermark_scan_id: { type: string }
+        watermark_ts: { type: string, format: date-time }
+        nodes_ingested: { type: integer, nullable: true }
+        first_ts: { type: string, format: date-time, nullable: true }
+        last_ts: { type: string, format: date-time, nullable: true }
+        trade_rows: { type: integer }
+        closed_rows: { type: integer }
+        open_rows: { type: integer }
+        requested_days: { type: number, nullable: true }
+        available_days: { type: number, nullable: true }
+        coverage_ratio: { type: number, nullable: true }
+        short_zones:
+          type: array
+          description: Selected zones whose availability is shorter than the requested window.
+          items: { type: string }
+        zone_available:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              from: { type: string, nullable: true }
+              to: { type: string, nullable: true }
+              rows: { type: integer }
+              days: { type: number, nullable: true }
+              window_days: { type: number, nullable: true }
+        field_availability:
+          type: object
+          description: First node at which a drifting board field became available.
+          additionalProperties:
+            type: object
+            properties:
+              from_utc: { type: string, nullable: true }
+              from_scan_id: { type: string, nullable: true }
+        parameter_segments:
+          type: array
+          items:
+            type: object
+            properties:
+              version: { type: string }
+              from_utc: { type: string, nullable: true }
+              to_utc: { type: string, nullable: true }
+              last_exit_utc: { type: string, nullable: true }
+              trades: { type: integer }
+        freshness:
+          type: object
+          description: Ledger watermark vs the live scan head.
+          properties:
+            stale: { type: boolean }
+            latest_scan_id: { type: string, nullable: true }
+            latest_ts: { type: string, nullable: true }
+            lag_minutes: { type: number, nullable: true }
+            lag_nodes: { type: integer, nullable: true }
+            hint: { type: string, nullable: true }
+        ledger_ready: { type: boolean }
+
+    ReviewSummary:
+      type: object
+      description: >
+        Three denominators, all reported: `trades` (every CLOSED record),
+        `usable` (records with a computable PnL — the divisor for win rate and
+        averages) and `open_trades` (never in any PnL figure).
+      properties:
+        trades: { type: integer }
+        usable: { type: integer }
+        missing_px: { type: integer }
+        unique_coins: { type: integer }
+        open_trades: { type: integer }
+        up: { type: integer }
+        down: { type: integer }
+        win: { type: integer }
+        flat: { type: integer }
+        loss: { type: integer }
+        win_rate: { type: number, nullable: true }
+        sum_pct: { type: number }
+        avg_pct: { type: number, nullable: true }
+        median_pct: { type: number, nullable: true }
+        max_pct: { type: number, nullable: true }
+        min_pct: { type: number, nullable: true }
+        avg_win_pct: { type: number, nullable: true }
+        avg_loss_pct: { type: number, nullable: true }
+        profit_factor: { type: number, nullable: true }
+        avg_dwell_minutes: { type: number, nullable: true }
+        median_dwell_minutes: { type: number, nullable: true }
+        max_drawdown_pct: { type: number, nullable: true }
+        turnover_per_coin_per_day: { type: number, nullable: true }
+        data_quality: { type: number, nullable: true }
+        dwell_histogram:
+          type: array
+          items:
+            type: object
+            properties:
+              from_nodes: { type: integer }
+              to_nodes: { type: integer, nullable: true }
+              count: { type: integer }
+        equity_curve:
+          type: array
+          items:
+            type: object
+            properties:
+              at_utc: { type: string }
+              cum_pnl_pct: { type: number }
+        flag_counts:
+          type: object
+          additionalProperties: { type: integer }
+        by_zone:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/ReviewSummary' }
+        by_direction:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/ReviewSummary' }
+        by_parameter_version:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/ReviewSummary' }
+        chip_counts:
+          type: object
+          additionalProperties: { type: integer }
+        control_benchmark:
+          type: object
+          description: Selected zones minus the control zones over the same window.
+          properties:
+            zones: { type: array, items: { type: string } }
+            trades: { type: integer }
+            avg_pct: { type: number, nullable: true }
+            win_rate: { type: number, nullable: true }
+            edge_avg_pct: { type: number, nullable: true }
+            edge_win_rate: { type: number, nullable: true }
+            note: { type: string }
+
+    ReviewEnvelope:
+      type: object
+      required: [coverage, summary, attribution]
+      properties:
+        coverage: { $ref: '#/components/schemas/ReviewCoverage' }
+        summary: { $ref: '#/components/schemas/ReviewSummary' }
+        attribution: { type: string, enum: [exit, enter, contained] }
+        parameter_versions: { type: array, items: { type: string } }
+        filters:
+          type: object
+          description: Echo of the resolved query, including `invalid_params` for rejected values.
+
+
+    OhlcvBar:
+      type: object
+      required: [time, open, high, low, close, volume]
+      properties:
+        time:
+          type: integer
+          description: Unix seconds UTC (candle open)
+        open: { type: number }
+        high: { type: number }
+        low: { type: number }
+        close: { type: number }
+        volume: { type: number }
+
+    SymbolPathNode:
+      type: object
+      required: [scan_sequence, scan_timestamp_utc, state, score_up, score_down, ret_since_anchor]
+      properties:
+        scan_sequence: { type: integer }
+        scan_timestamp_utc: { type: string, format: date-time }
+        state:
+          $ref: '#/components/schemas/ScreenerState'
+        score_up: { type: number }
+        score_down: { type: number }
+        ret_since_anchor: { type: number }
+
+    ScreenerState:
+      type: string
+      enum:
+        - NONE
+        - WATCH
+        - QUALIFIED
+        - CONFIRMED
+        - ELIMINATED
+        - DATA_INSUFFICIENT
+        - LOW_CONFIDENCE
+
+    SymbolScreenerDetail:
+      type: object
+      required: [current, path, meta]
+      properties:
+        current:
+          description: Null if symbol not in requested direction pool
+          nullable: true
+          type: object
+        path:
+          type: array
+          maxItems: 96
+          items:
+            $ref: '#/components/schemas/SymbolPathNode'
+        meta:
+          type: object
+          description: Same shape as ScreenerSnapshot.meta

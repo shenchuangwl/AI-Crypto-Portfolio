@@ -1,0 +1,340 @@
+openapi: 3.0.3
+info:
+  title: OnlyCoin Y facts and observer supply API
+  version: 1.0.0
+  description: |
+    Designed integration contract; not evidence of deployment or backfill.
+    UTC daily post-TopK facts are separate from the old occupancy ledger.
+    Supply control enables eligibility delivery to a local observer, never trading.
+    Response extensions are allowed; the public control request is strict.
+servers:
+  - url: /
+    description: Same-origin gateway; paths already include /api/v1.
+security: []
+paths:
+  /api/v1/screener-y/dmr-daily:
+    get:
+      operationId: getOnlyCoinYDaily
+      summary: Read the Y daily unique selected-symbol projection
+      parameters:
+        - $ref: '#/components/parameters/BusinessDate'
+        - $ref: '#/components/parameters/AsOf'
+      responses:
+        '200':
+          $ref: '#/components/responses/Daily'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/review/onlycoin:
+    get:
+      operationId: getOnlyCoinReview
+      summary: Read the OnlyCoin review projection, not occupancy episodes
+      parameters:
+        - name: board
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [y]
+          description: Only the Y board is supported by this contract.
+        - $ref: '#/components/parameters/BusinessDate'
+        - $ref: '#/components/parameters/AsOf'
+      responses:
+        '200':
+          $ref: '#/components/responses/Daily'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/onlycoin/sources/screener-y/status:
+    get:
+      operationId: getOnlyCoinYSourceStatus
+      summary: Read desired supply state and observer-only connectivity
+      description: |
+        Never interpret enabled or observer connectivity as strategy connectivity.
+        A first status read may initialize control storage in the implementation.
+      responses:
+        '200':
+          description: Source control and connectivity status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceStatus'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /api/v1/onlycoin/sources/screener-y/control:
+    put:
+      operationId: putOnlyCoinYSourceControl
+      summary: Change desired observer supply state using revision CAS
+      description: |
+        Authenticate against server-side ONLYCOIN_ADMIN_TOKEN. Missing server
+        configuration fails closed. Unsafe cross-origin writes must be rejected.
+        Read status for expected_revision; retry an ambiguous result with the
+        exact same request_id and body. Reusing an ID with changed content or
+        submitting a stale revision conflicts. Read status after success.
+        Each accepted new operation advances revision and generation; generation
+        must not roll back during recovery. Current-day snapshot supply only.
+        This operation does not change Y execution permissions or start a strategy.
+      security:
+        - OnlyCoinAdmin: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ControlRequest'
+      responses:
+        '200':
+          description: Accepted desired control state, or original idempotent result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlResult'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          description: Missing or invalid bearer credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Unsafe origin or forbidden write
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Revision CAS conflict or request ID reused with different content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+components:
+  securitySchemes:
+    OnlyCoinAdmin:
+      type: http
+      scheme: bearer
+      description: Server-side ONLYCOIN_ADMIN_TOKEN; never embed in a frontend bundle.
+  parameters:
+    BusinessDate:
+      name: business_date
+      in: query
+      required: false
+      description: UTC calendar date, defaulting to the current UTC day.
+      schema:
+        type: string
+        format: date
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    AsOf:
+      name: as_of
+      in: query
+      required: false
+      description: |
+        Timezone-aware ISO-8601 availability cutoff, defaulting to server time.
+        Archive availability is a proxy, not evidence of actual publication.
+      schema:
+        type: string
+        format: date-time
+  responses:
+    Daily:
+      description: |
+        Daily projection with explicit stale and coverage metadata. An empty or
+        partial result is not evidence of complete history. No trading permission.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DailyProjection'
+    InvalidRequest:
+      description: Invalid query, board, timestamp, body type or unknown control field
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unavailable:
+      description: Required storage/service unavailable or admin control not configured
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      additionalProperties: true
+      description: Error details are extensible; no exact error envelope is asserted.
+    Member:
+      type: object
+      additionalProperties: true
+      required: [symbol]
+      properties:
+        symbol:
+          type: string
+          minLength: 1
+          description: Original contract identifier; do not normalize or silently repair.
+        member_id:
+          type: string
+        first_scan_id:
+          type: string
+        first_selected_at:
+          type: string
+          format: date-time
+        first_available_at:
+          type: string
+          format: date-time
+        first_direction:
+          type: string
+          enum: [LONG, SHORT]
+        directions:
+          type: array
+          items:
+            type: string
+            enum: [LONG, SHORT]
+        provenance:
+          type: string
+          enum: [live_committed, observed_archive, counterfactual_replay]
+        availability_quality:
+          type: string
+          description: COMMITTED or archive PROXY; extensible metadata.
+    DailyProjection:
+      type: object
+      additionalProperties: true
+      required:
+        - board_key
+        - business_date
+        - cycle_start_utc
+        - cycle_end_utc
+        - projection_revision
+        - long
+        - short
+        - onlycoin
+        - counts
+        - coverage
+        - stale
+        - dmr_executable
+        - consumable_by_dmr
+      properties:
+        board_key:
+          type: string
+          enum: [y]
+        business_date:
+          type: string
+          format: date
+        cycle_start_utc:
+          type: string
+          format: date-time
+        cycle_end_utc:
+          type: string
+          format: date-time
+        server_time:
+          type: string
+          format: date-time
+        projection_revision:
+          type: integer
+          minimum: 0
+        as_of_scan_id:
+          type: string
+          nullable: true
+        last_committed_at:
+          type: string
+          format: date-time
+          nullable: true
+        long:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        short:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        onlycoin:
+          type: array
+          description: Full daily set deduplicated by symbol across directions, not a viewport.
+          items:
+            $ref: '#/components/schemas/Member'
+        counts:
+          type: object
+          additionalProperties: true
+          required: [long, short, onlycoin]
+          properties:
+            long:
+              type: integer
+              minimum: 0
+            short:
+              type: integer
+              minimum: 0
+            onlycoin:
+              type: integer
+              minimum: 0
+        coverage:
+          type: object
+          additionalProperties: true
+          description: Missing scans, availability quality and identity flags must remain visible.
+        stale:
+          type: boolean
+        dmr_executable:
+          type: boolean
+          enum: [false]
+        consumable_by_dmr:
+          type: boolean
+          enum: [false]
+    ControlRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled, expected_revision, request_id, reason]
+      properties:
+        enabled:
+          type: boolean
+          description: Strict JSON boolean; strings and integers are invalid.
+        expected_revision:
+          type: integer
+          minimum: 0
+          description: Revision read from status; JSON booleans are invalid.
+        request_id:
+          type: string
+          minLength: 1
+          pattern: '\S'
+        reason:
+          type: string
+          description: Operator audit reason, without credentials or secrets.
+    ControlResult:
+      type: object
+      additionalProperties: true
+      required: [enabled, revision, generation]
+      properties:
+        enabled:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 0
+        generation:
+          type: integer
+          minimum: 0
+          description: Durable monotonic delivery fence; must never roll back.
+        replay_policy:
+          type: string
+          enum: [current_day_snapshot]
+    SourceStatus:
+      allOf:
+        - $ref: '#/components/schemas/ControlResult'
+        - type: object
+          additionalProperties: true
+          required: [consumer_connected, consumer_kind, trading_connected, dmr_executable, effective_state]
+          properties:
+            consumer_connected:
+              type: boolean
+              description: Observer connectivity only; not proof of strategy delivery.
+            consumer_kind:
+              type: string
+              enum: [local_observer]
+            trading_connected:
+              type: boolean
+              enum: [false]
+            dmr_executable:
+              type: boolean
+              enum: [false]
+            effective_state:
+              type: string
+              description: Supply state label; no exhaustive state enum asserted.

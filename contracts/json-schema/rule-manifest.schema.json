@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hermes.local/contracts/rule-manifest.schema.json",
+  "title": "RuleManifest",
+  "description": "不可变规则身份。ChatGpt_SOL5.6 文档A §13.1 / 文档B §5.1。发布后只增不改：任何逻辑变化必须递增 rule_revision 并发新文件，禁止同名版本静默覆盖（文档A §20【上线阻断】）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "board_key",
+    "parameter_version",
+    "rule_revision",
+    "config_hash",
+    "asset_mapping_version",
+    "mcap_mapping_version",
+    "mapping_hash",
+    "code_commit",
+    "indicator_version",
+    "data_contract_version",
+    "universe_policy_version",
+    "effective_from_utc",
+    "effective_from_scan_id",
+    "feature_flags",
+    "manifest_hash"
+  ],
+  "properties": {
+    "$comment": { "type": ["array", "string"] },
+    "schema": { "const": "rule-manifest-v1" },
+    "board_key": {
+      "type": "string",
+      "enum": ["main", "x", "y"],
+      "description": "选币榜X v1.3.0 当前复刻 main v1.4.0，shadow 观察与复盘闭环独立；后续只经 X overrides 同步 YAML 演进。只有 main 具备执行资格（文档A §3）。"
+    },
+    "parameter_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "展示/兼容层的参数版本，一整个版本周期内不变。"
+    },
+    "rule_revision": {
+      "type": "string",
+      "minLength": 1,
+      "description": "不可变规则修订，例如 y-v2.0.0-r1。任何逻辑变化必须递增。"
+    },
+    "config_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "**解析并补默认值后的有效配置**的 JCS SHA-256；不是对 YAML 文本取哈希（文档A §13.1）。"
+    },
+    "asset_mapping_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "symbol→asset 资产映射版本（现网 mapping_version=cg-map 的无歧义新名）。与 mcap_mapping_version 没有别名关系。"
+    },
+    "mcap_mapping_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "216/432 规则表的语义版本；本规则段不含该层时取 NOT_APPLICABLE，不得为 null。"
+    },
+    "mapping_hash": {
+      "type": "string",
+      "minLength": 1,
+      "description": "mcap_mapping_version 对应的决定性 payload SHA-256（文档A 附录C）；不表示 CoinGecko 资产映射。"
+    },
+    "code_commit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "代码身份。不可得时为 UNAVAILABLE_WORKTREE_NOT_GIT —— 这是「不可严格重放」的证据，不是可以省略的字段（文档A §1【上线阻断】）。"
+    },
+    "indicator_version": { "type": "string", "minLength": 1 },
+    "data_contract_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "规则段级：原始输入 Schema / 单位 / null / as_of 语义的合同版本。不得用 data_version 代替。"
+    },
+    "universe_policy_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "规则段级：宇宙纳入、排除、上市/退市处理政策版本。不得用 universe_version 代替。"
+    },
+    "effective_from_utc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T00:00:00Z$",
+      "description": "只允许 00:00 UTC 周期边界（文档B §3.3：禁止周期中途切换）。"
+    },
+    "effective_from_scan_id": {
+      "type": "string",
+      "pattern": "^\\d{8}-000$",
+      "description": "生效边界节点，必须是当日 000 号节点。"
+    },
+    "feature_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ENABLE_MCAP_ZONE",
+        "ENABLE_TARGET_WEIGHTS",
+        "ENABLE_MCAP_EFFECTIVE_ZONE"
+      ],
+      "properties": {
+        "ENABLE_MCAP_ZONE": { "type": "boolean" },
+        "ENABLE_TARGET_WEIGHTS": { "type": "boolean" },
+        "ENABLE_MCAP_EFFECTIVE_ZONE": { "type": "boolean" }
+      },
+      "description": "三个功能开关写进 manifest 与 config_hash，禁止周期中途改变（文档B §5.3）。"
+    },
+    "dmr_executable": { "type": "boolean" },
+    "consumable_by_dmr": { "type": "boolean" },
+    "param_hash": {
+      "type": ["string", "null"],
+      "description": "第二轮落地的粗粒度参数指纹（pf1_*），为账本连续性保留；与 config_hash 并存，不互为别名。"
+    },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "manifest 自身的 JCS SHA-256 —— 手工编辑立刻被 load() 检出。"
+    }
+  }
+}

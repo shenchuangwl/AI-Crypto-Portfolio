@@ -1,0 +1,36 @@
+{
+  "$comment": [
+    "不可变 RuleManifest —— 《选币榜Y》一致性等式的左半边（文档 B §3.1/§5.1）。",
+    "发布后只增不改：任何逻辑变化必须递增 rule_revision 并发新文件，",
+    "禁止同名版本静默覆盖（文档 A §20【上线阻断】）。",
+    "effective_from_* 只允许落在 00:00 UTC 周期边界（文档 B §3.3）。"
+  ],
+  "schema": "rule-manifest-v1",
+  "board_key": "y",
+  "parameter_version": "param-v2.0.0-screener-y",
+  "rule_revision": "y-v2.0.0-r1",
+  "config_hash": "sha256:a85830e1bc739e961cb6a97b59b81ca0b7a3e0e732f1d5834719e95658f57731",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "UNAVAILABLE_WORKTREE_NOT_GIT",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-09-01T00:00:00Z",
+  "effective_from_scan_id": "20260901-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": false,
+    "ENABLE_TARGET_WEIGHTS": true,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_1b44aba95de8ffe8",
+  "notes": [
+    "ChatGpt_SOL5.6 第三轮落地：216/432 映射层与有效区内核已接线，mcap_zone_mode 缺省 off，因此 ENABLE_MCAP_ZONE / ENABLE_MCAP_EFFECTIVE_ZONE 为 false。",
+    "ENABLE_TARGET_WEIGHTS 由已解析权重推导：第一轮已把目标七权重写进 board-variants.json 的 boards[key=y].overrides.settings 并现网生效，故本 manifest 如实记为 true（与文档A §17.2 的默认 0 存在差异，已在验收报告登记）。",
+    "code_commit 为 UNAVAILABLE_WORKTREE_NOT_GIT：工作目录不是 Git 仓库，严格重放上线前必须由 CI 注入（文档A §1 / 文档B §4.3【上线阻断】）。"
+  ],
+  "manifest_hash": "sha256:32befead95214d7b176ecb585fd49fabec0340953c18aa0d385e818c10b2d926"
+}

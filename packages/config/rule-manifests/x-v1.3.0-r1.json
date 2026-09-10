@@ -1,0 +1,34 @@
+{
+  "$comment": "选币榜X v1.3.0：main v1.4.0 复刻、shadow 观察、独立复盘闭环；仅 X overrides + YAML 为演进入口。",
+  "schema": "rule-manifest-v1",
+  "board_key": "x",
+  "parameter_version": "param-v1.3.0-screener-x",
+  "rule_revision": "x-v1.3.0-r1",
+  "config_hash": "sha256:5a19868a5d72b129ad789a00b3d0741bcfd9fe46672652439057359270b093f1",
+  "asset_mapping_version": "cg-map",
+  "mcap_mapping_version": "mcap-216-v2.0.0-r1",
+  "mapping_hash": "sha256:da14429d62614a22096fa15cc93a66c9465e4d62597737844e97c552dc6d1689",
+  "code_commit": "22b0e511da3178e87d7adf51a25b37ee881a72ce",
+  "indicator_version": "g1g2g3g4-sm-dual-path",
+  "data_contract_version": "raw-input-contract-v1",
+  "universe_policy_version": "binance-usdt-perp-v1",
+  "effective_from_utc": "2026-08-15T00:00:00Z",
+  "effective_from_scan_id": "20260815-000",
+  "feature_flags": {
+    "ENABLE_MCAP_ZONE": true,
+    "ENABLE_TARGET_WEIGHTS": false,
+    "ENABLE_MCAP_EFFECTIVE_ZONE": false
+  },
+  "dmr_executable": false,
+  "consumable_by_dmr": false,
+  "param_hash": "pf1_b2d6cd1ec88bf4af",
+  "notes": [
+    "选币榜X v1.3.0 当前复刻 main v1.4.0；与旧 param-v1.3.0-dual-path-sticky 无关。",
+    "唯一调参入口 boards[key=x].overrides，必须同步 X YAML；后续独立演进需递增 rule_revision，不覆盖已发布文件。",
+    "独立复盘闭环与实时同源同参；shadow 只观察四列，不参与准入/退出/分区/排序/DMR；cycle 关闭。",
+    "两道锁：独立 data/dmr-adapter-x/inbox，X 机器版本不在 DMR 白名单；不可执行。",
+    "2026-09-05 登记此规则；effective_from_utc 采用可用历史起日的 00:00 UTC，专供以当前规则重算历史，不声称 X 当时已上线或当时执行过。",
+    "code_commit 读取 data/coin-selection/deployed-commit.txt 的钉定值，不随 HEAD 漂移；本轮未提交源码的精确差异由验收报告与工作区改动清单留证。"
+  ],
+  "manifest_hash": "sha256:caf5285965c7aa4980c7f63dcbd05776135acb358834f0c7d10b29fc6f1255c9"
+}
