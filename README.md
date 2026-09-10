@@ -1,10 +1,15 @@
 # AI Crypto Portfolio
 
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-%E2%89%A53.11-3776AB?logo=python&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-%5E20.19%20%7C%7C%20%E2%89%A522.12-339933?logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+
 > Binance USDT-M 永续合约**自动选币与复盘工作台**（内部代号 *Hermes*）。
 > 行情采集 → 四道闸门打分 → 滞回状态机分区 → 多板面投影 → 复盘账本 → Web 终端展示，
 > 执行侧只提供**纸面（paper）闭环**，不包含真实下单能力。
 
-仓库名：`AI-Crypto-Portfolio` · 展示名：**AI Crypto Portfolio** · 版权与作者归属见 [COPYRIGHT.md](COPYRIGHT.md)
+仓库名：`AI-Crypto-Portfolio` · 展示名：**AI Crypto Portfolio** · 作者：[@shenchuangwl](https://github.com/shenchuangwl)（原项目独立开发者）· 许可证：[Apache-2.0](LICENSE)
 
 ---
 
@@ -14,6 +19,7 @@
 - 永续合约交易具有高杠杆、高波动风险，可能在短时间内损失全部保证金。历史复盘结果不代表未来收益。
 - 行情数据来自 Binance 公共接口与 CoinGecko，可能存在延迟、缺失或错误；请勿将本项目作为唯一决策依据。
 - 本仓库**不含**真实下单代码：`dmr-executor` 只做纸面记录。若你自行接入真实交易，由此产生的一切后果由你自行承担。
+- 依 Apache-2.0 第 7、8 条，本项目按“**原样**”（AS IS）提供，不附带任何明示或默示的担保，作者不对使用本项目造成的任何损失承担责任。
 - 使用 Binance 行情须遵守 [Binance API Terms](https://www.binance.com/en/terms)，不得转售实时数据流；使用 CoinGecko 数据须遵守其条款与署名要求。
 
 ---
@@ -36,14 +42,14 @@
 - [常见问题](#常见问题)
 - [安全提示](#安全提示)
 - [贡献方式](#贡献方式)
-- [作者归属与许可证](#作者归属与许可证)
+- [许可证与作者归属](#许可证与作者归属)
 
 ---
 
 ## 项目简介
 
 AI Crypto Portfolio 面向 Binance **USDT 本位永续合约**（USDT + PERPETUAL + TRADING，`underlyingType ∈ {COIN, 缺失}`，
-本地运行时约 500+ 个合约），每 15 分钟对全宇宙做一次横截面扫描：
+实测宇宙约 526 个合约），每 15 分钟对全宇宙做一次横截面扫描：
 
 1. **market-ingest** 用 Binance 原生 fapi REST + WebSocket 维护合约宇宙与实时价格；
 2. **coin-selection** 依次执行 G1（流动性硬门槛）→ G2（动量/一致性）→ G3（CoinGecko 流通量映射）→ G4（阶梯评分），
@@ -91,6 +97,7 @@ AI Crypto Portfolio 面向 Binance **USDT 本位永续合约**（USDT + PERPETUA
 | 存储 | 文件 JSON 快照（热数据）+ SQLite（复盘账本、OnlyCoin 库） |
 | 外部服务 | Binance USDT-M fapi（公共行情，无需密钥）、CoinGecko API（流通量/市值，建议自备 key） |
 | 契约 | OpenAPI 3.0、JSON Schema、TypeScript 类型、Pydantic v2 模型（`contracts/`） |
+| 容器（可选） | Docker Compose，镜像 `python:3.12-slim` |
 
 ## 目录结构
 
@@ -112,16 +119,16 @@ AI-Crypto-Portfolio/
 ├── packages/config/             # 参数快照 YAML、板面注册表、规则 manifest、216 映射、保留策略
 │   └── candidates/              #   待授权的候选配置（生产代码永不自动加载）
 ├── scripts/                     # 启停、冒烟、验收闸、回放、研究脚本
-├── deploy/docker-compose.yml    # 可选容器编排（未验证，见“部署”）
+├── deploy/docker-compose.yml    # 容器编排（market-ingest + gateway，可选 selection-loop）
 ├── docs/                        # 机制说明、OnlyCoin 源控制接口契约
 ├── requirements.txt             # 运行依赖
 ├── requirements-dev.txt         # 开发/测试依赖（含 pytest）
 ├── .env.example                 # 环境变量模板（仅占位符）
-├── NOTICE                       # 第三方组件署名要求
-└── COPYRIGHT.md                 # 版权与作者归属
+├── LICENSE                      # Apache License 2.0 全文
+├── NOTICE                       # 版权声明与第三方组件署名（再分发时须保留）
+├── COPYRIGHT.md                 # 版权、作者归属与署名要求说明
+└── CONTRIBUTING.md              # 贡献指南
 ```
-
-各服务目录下的 `README.md` 保留了开发期的补充说明，其中的绝对路径（如 `/data120/...`）为原作者本机环境，请替换为你的仓库路径。
 
 ## 系统要求
 
@@ -132,7 +139,7 @@ AI-Crypto-Portfolio/
 | Node.js | `^20.19.0 \|\| >=22.12.0` | Vite 8 的引擎要求；已验证 Node 24.18.0 / npm 12.0.2 |
 | 网络 | 可访问 `fapi.binance.com`、`fstream.binance.com`、`api.coingecko.com` | 部分地区访问 Binance 受限，请自行确认合规 |
 | 磁盘 | 视保留期而定 | 按默认 31 天保留策略，原作者环境稳态约数 GB；冒烟运行只需几十 MB |
-| Docker（可选） | Docker + Compose v2 | 仅用于 `deploy/docker-compose.yml`，**未验证** |
+| Docker（可选） | Docker + Compose v2 | 已验证 Docker 29.6.1 / Compose v5.3.1（默认 profile） |
 
 ## 快速开始
 
@@ -150,7 +157,7 @@ cd AI-Crypto-Portfolio
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-# 需要跑测试时再装：
+# 需要跑测试时改装（包含上面的运行依赖 + pytest）：
 .venv/bin/pip install -r requirements-dev.txt
 source .venv/bin/activate          # 后续脚本中的 python3 将指向虚拟环境
 ```
@@ -247,7 +254,7 @@ G3 闸门以及依赖流通量的所有功能（流通市值、30m/2h/6h 流通�
 - **请自行前往 [CoinGecko](https://www.coingecko.com/) 注册并申请 API key，相关费用由你自行承担。** 需使用你自己名下、且符合本项目接口调用量与套餐要求的 key，依赖该服务的功能才能稳定运行。
 - **本仓库不提供、也不共享原作者或任何其他人的 CoinGecko API key。** 仓库中只有空占位符；请勿把你的 key 提交到任何公开位置。
 - 不配置 key 时，程序会以无 key 方式访问 `api.coingecko.com`（公共接口按 IP 共享限额），并自动放慢节奏（批大小 ≤150、批间隔 ≥3 秒、429 时加长退避）。
-  本次发布验证中，无 key 模式在 40 个合约的冒烟中成功完成了映射与流通量获取，但全量扫描下**极易触发 429**，不建议长期使用。
+  发布验证中，无 key 模式在 40 个合约的冒烟中成功完成了映射与流通量获取，但全量扫描下**极易触发 429**，不建议长期使用。
 
 ### 配置字段
 
@@ -344,12 +351,12 @@ npm run verify       # 全部前端验证闸（排序、计数、板面拆分、
 npm run verify:board-split   # 也可单独运行某一个闸
 ```
 
-离线看界面：`VITE_USE_MOCK=1 npm run dev` 使用 `src/mocks` 中的模拟快照，无需后端。
+离线看界面：`VITE_USE_MOCK=1 npm run dev` 使用 `src/mocks` 中的模拟快照，无需后端。更多说明见 [apps/web/README.md](apps/web/README.md)。
 
 ### 后端
 
 ```bash
-# 全部 Python 单测 + CI 护栏 + 验收闸 + 前端验证闸（缺数据的闸会 SKIP）
+# 全部 Python 单测 + CI 护栏 + 验收闸 + 前端验证闸（缺数据的闸会 SKIP）；需先安装 requirements-dev.txt
 PY=.venv/bin/python bash scripts/run-tests.sh
 
 # 单个测试文件（stdlib runner，直接运行）
@@ -364,11 +371,12 @@ bash scripts/smoke-s2-s4.sh          # S2→S4 端到端
 bash scripts/smoke-live.sh           # 需 ingest + gateway 已启动
 ```
 
-在**全新克隆**中运行 `scripts/run-tests.sh` 时，已知会有以下失败，原因不是代码缺陷，而是依赖未发布的材料或本地运行状态（详见 [验证状态](#验证状态)）：
+在**全新克隆**中运行 `scripts/run-tests.sh` 时，已知会有以下失败。它们不是代码缺陷，而是依赖原作者本地的运行状态（详见 [验证状态](#验证状态)）：
 
-- `test_mcap_combo.py`、`test_mcap_mapping.py`：用内部设计文档中的映射表做交叉校验，这些文档未随仓库发布；
-- `test_x_v13_candidate_config.py`、`test_x_v13_switch.py`：依赖原作者本地的规则切换审计流水、注册表备份与部署时间窗口；
+- `test_x_v13_candidate_config.py`、`test_x_v13_switch.py`：依赖原作者本地的规则切换审计流水、注册表备份与部署时间窗口。后者的输出中还会出现一行“选币内核单元套件全绿”的 FAIL，它是被测脚本用系统 `python3` 重跑单测时的附带输出，不是独立的闸；
 - `verify_new_four_zone.py`：需要先产出 `data/coin-selection/latest.json`（跑一轮扫描后通过）。
+
+另有两处与内部设计文档交叉校验的用例（`test_mcap_combo.py`、`test_mcap_mapping.py` 中各一条），在文档不存在时会打印 `skip` 并跳过；216 映射本身仍由冻结文件、`mapping_hash` 与其余不变量用例约束。
 
 ### 离线工具
 
@@ -383,26 +391,53 @@ bash scripts/smoke-live.sh           # 需 ingest + gateway 已启动
 
 ## 部署
 
-**本机守护进程（已验证网关与冒烟流程）**：按“快速开始”执行 `bash scripts/start-all.sh`。服务默认只监听 `127.0.0.1`。
-如需定时清理数据，可参考以下 cron 配置（请先把 `packages/config/retention.json` 中的 `mount` 改为你的数据盘挂载点，原值 `/data120` 为原作者环境）：
+### 本机守护进程（已验证）
+
+按“快速开始”执行 `bash scripts/start-all.sh`。服务默认只监听 `127.0.0.1`。
+
+如需定时清理数据，可参考以下 cron 配置。使用前请先把 `packages/config/retention.json` 中的 `mount` 改为你的数据盘挂载点（原值 `/data120` 为原作者环境）：
 
 ```cron
 CRON_TZ=Asia/Shanghai
 20 4 * * * /path/to/AI-Crypto-Portfolio/scripts/run-retention.sh >/dev/null 2>&1
 ```
 
-**Docker Compose（未验证）**：`deploy/docker-compose.yml` 定义了 `market-ingest`、`gateway` 与可选的 `selection-loop`（profile `loop`）三个服务，
-以挂载源码的方式运行 `python:3.12-slim`，网关映射 18080。使用前需在宿主机先构建前端：
+### Docker Compose（默认 profile 已验证）
+
+`deploy/docker-compose.yml` 以挂载源码的方式运行 `python:3.12-slim`，定义三个服务：`market-ingest`（启动时 `pip install -r requirements.txt`）、`gateway`（仅用标准库）和可选的 `selection-loop`（profile `loop`）。
+容器内不构建前端，需先在宿主机构建：
 
 ```bash
+# 仓库根目录
 cd apps/web && npm ci && npm run build && cd ../..
-docker compose -f deploy/docker-compose.yml up -d
-docker compose -f deploy/docker-compose.yml --profile loop up -d   # 含 15 分钟循环
+docker compose -f deploy/docker-compose.yml up -d                  # market-ingest + gateway
+docker compose -f deploy/docker-compose.yml --profile loop up -d   # 含 15 分钟选币循环（未验证）
+docker compose -f deploy/docker-compose.yml down                   # 停止
 ```
 
-该编排文件标注为内部/小团队用途，本次发布**未在容器中实际运行验证**；`gateway` 与 `selection-loop` 容器未显式安装 `requirements.txt`，如遇依赖缺失请自行调整。
+- 默认映射 `18080:18080` 与 `18100:18100`，会**监听宿主机所有网卡**。只想本机访问，或需要换端口时，可加一个覆盖文件（Compose v2.24+ 支持 `!override`）：
 
-**公网部署**：本项目**未提供**鉴权、限流与 TLS，GET 接口均无需认证。不建议直接暴露到公网；如确有需要，请置于带认证的反向代理之后。
+  ```yaml
+  # deploy/docker-compose.local.yml
+  services:
+    market-ingest:
+      ports: !override
+        - "127.0.0.1:18100:18100"
+    gateway:
+      ports: !override
+        - "127.0.0.1:18080:18080"
+  ```
+
+  ```bash
+  docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml up -d
+  ```
+
+- `selection-loop` 容器未显式安装 `requirements.txt`，这一路径**未验证**；如遇依赖缺失，请在其 `command` 中补上 `pip install -q -r requirements.txt &&`。
+- `.env` 的读取：`selection-loop` 中的扫描器（`coin_selection`）会通过挂载的源码目录读取仓库根目录的 `.env`，因此 `COINGECKO_API_KEY` 在该容器内生效；`gateway` / `market-ingest` 容器不读取 `.env`，`ONLYCOIN_ADMIN_TOKEN` 等变量需通过 compose 的 `environment` / `env_file` 传入。
+
+### 公网部署
+
+本项目**未提供**鉴权、限流与 TLS，GET 接口均无需认证。不建议直接暴露到公网；如确有需要，请置于带认证的反向代理之后。
 
 ## 未随仓库发布的数据与文件
 
@@ -410,33 +445,34 @@ docker compose -f deploy/docker-compose.yml --profile loop up -d   # 含 15 分�
 |---|---|---|
 | `data/`（快照、复盘账本 SQLite、K 线缓存、日志、PID；原作者环境约 45 GB） | 体量大、运行产物、可再生 | 首次运行自动创建；扫描循环持续产出；账本用 `build_review_ledger.py` / `replay_screener_y.py` 重建 |
 | `.env` | 含个人凭据 | 由 `.env.example` 复制后自行填写 |
-| `third_party/DMR_binance_Version_V16_A1`（DMR 执行层） | 独立的私有/第三方项目，含实盘交易代码与本地配置 | 不提供。`dmr-adapter` / `dmr-executor` 在找不到它时仅探测失败（`exists=false`），不影响选币、网关与前端；如你有自己的执行层，可通过 `DMR_ROOT` 指向它 |
+| `third_party/DMR_binance_Version_V16_A1`（DMR 执行层） | 独立的私有项目，含实盘交易代码与本地配置 | 不提供。`dmr-adapter` / `dmr-executor` 找不到它时只是探测失败（`exists=false`），不影响选币、网关与前端；如你有自己的执行层，可用 `DMR_ROOT` 指向它 |
 | 内部设计、方案、评审与验收报告、研究材料 | 内部资料 | 不提供。项目机制说明见 `docs/qualified-vs-confirmed-explained.md` 与代码注释 |
 | `apps/web/node_modules`、`apps/web/dist`、`.venv` | 可重新生成 | `npm ci`、`npm run build`、`pip install` |
 
 ## 验证状态
 
-以下为 **2026-09-10** 在全新导出副本中的实测结果（Ubuntu / Python 3.12.3 / Node 24.18.0 / npm 12.0.2，未配置 CoinGecko key）：
+以下为 **2026-09-10** 在全新导出副本中的实测结果（Ubuntu / Python 3.12.3 / Node 24.18.0 / npm 12.0.2 / Docker 29.6.1，未配置 CoinGecko key）：
 
 | 步骤 | 结果 |
 |---|---|
-| `pip install -r requirements.txt` | ✅ 通过 |
+| `pip install -r requirements-dev.txt` | ✅ 通过 |
 | `npm ci` | ✅ 通过 |
 | `npm run build` | ✅ 通过（有 chunk > 500 kB 警告） |
 | `npm run verify` | ✅ 通过（exit 0） |
 | `npm run lint` | ✅ 通过（3 条 react-hooks 警告） |
 | `bash scripts/smoke-p1-pipeline.sh`（无 key） | ✅ 通过：40 合约扫描完成，G3 流通量 17/17 获取成功，DMR 纸面执行正常 |
 | 网关在 `127.0.0.1` 启动并托管前端；`/api/v1/health`、`/api/v1/boards`、SPA 路由 | ✅ HTTP 200 |
-| `scripts/run-tests.sh` Python 单测 | ⚠️ 58 个文件通过，5 个失败：2 个因未发布的内部文档（补齐后通过），1 个缺 pytest（安装 `requirements-dev.txt` 后 41 项通过），2 个依赖原作者本地切换状态（其中之一在原作者环境同样有 1 项失败） |
+| Docker Compose 默认 profile（market-ingest + gateway，端口经覆盖文件改到本机） | ✅ 两个容器正常运行；ingest 拉取 526 个合约并连上 WebSocket；网关 health / boards / SPA 返回 200 |
+| `scripts/run-tests.sh` Python 单测 | ⚠️ 52 个测试文件通过，2 个失败（`test_x_v13_candidate_config.py`、`test_x_v13_switch.py`，依赖原作者本地切换状态；前者在原作者环境同样有 1 项失败）。前端验证闸全部通过 |
+| Docker `selection-loop` profile | ⏸ **未验证** |
 | 全量宇宙扫描 / 7×24 小时 15 分钟循环 | ⏸ **未验证**（耗时长、调用量大） |
 | 配置 CoinGecko Demo / Pro key 后的运行 | ⏸ **未验证**（仓库不提供 key） |
-| Docker Compose 部署 | ⏸ **未验证** |
 | macOS / Windows | ⏸ **未验证** |
 
 ## 常见问题
 
 **Q：18080 / 18100 / 5173 端口被占用？**
-在 shell 中设置 `PORT=28080 bash scripts/start-all.sh`；ingest 用 `MARKET_INGEST_PORT`；前端开发服用 `VITE_PORT`，并设置 `VITE_PROXY_TARGET` 指向新的网关端口。
+在 shell 中设置 `PORT=28080 bash scripts/start-all.sh`；ingest 用 `MARKET_INGEST_PORT`；前端开发服用 `VITE_PORT`，并设置 `VITE_PROXY_TARGET` 指向新的网关端口。Docker 部署见上文的覆盖文件。
 
 **Q：`/api/v1/screener-y/latest` 返回 503 `board_snapshot_missing`？**
 选币榜Y 由主扫描顺带投影产生。先跑一轮全量扫描，或用 `scripts/replay_screener_y.py` 回放。
@@ -456,27 +492,46 @@ docker compose -f deploy/docker-compose.yml --profile loop up -d   # 含 15 分�
 **Q：能否打开 `--fast-confirm` / `SM_FAST` 让确认区更快出现？**
 仅限实验环境。生产禁止使用，它会绕过停留时间门槛导致跨级级联。
 
+**Q：可以商用或二次开发吗？**
+可以。Apache-2.0 允许商用、修改与再分发，但须满足第 4 条的要求：附带 `LICENSE`、保留 `NOTICE` 与版权署名、标注修改（见 [许可证与作者归属](#许可证与作者归属)）。
+Binance、CoinGecko 等第三方数据服务的使用条款**不受**本项目许可证约束，商用前请自行确认。
+
 ## 安全提示
 
 - **不要提交 `.env`** 或任何真实凭据；仓库中的 `.env.example` 只含占位符。
 - 如果你曾在 fork 或提交中泄露过 key，请立即到对应平台**撤销并轮换**，仅删除文件并不能清除 Git 历史。
 - 浏览器端不持有任何交易所或 CoinGecko 密钥，所有外部请求均由后端发起。
 - `ONLYCOIN_ADMIN_TOKEN` 请使用高强度随机值，且只在本机环境中设置。
-- 网关默认只监听本机；在对外暴露前请自行加上认证、限流与 TLS。
+- 网关默认只监听本机；Docker 默认会映射到宿主机所有网卡，对外暴露前请自行加上认证、限流与 TLS。
 - 如发现安全问题，请通过 GitHub 私下联系维护者，不要在公开 Issue 中披露细节。
 
 ## 贡献方式
 
-1. 提交 Issue 描述问题或需求，附上复现步骤、日志片段（**请先脱敏**）与环境信息。
-2. Fork 后在独立分支上开发，保持改动聚焦；提交 PR 前至少运行 `npm run verify`、`npm run build` 及相关 Python 单测。
+欢迎提交 Issue 与 Pull Request，详细流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。要点：
+
+1. Issue 请附复现步骤、环境信息，日志**先脱敏**。
+2. PR 前至少运行 `npm run lint`、`npm run verify`、`npm run build` 与相关 Python 单测，确保不引入新的失败。
 3. 不要提交 `data/`、`.env`、构建产物或任何凭据。
-4. 涉及选币参数的改动请走 `packages/config/board-variants.json` 的 `overrides` 与规则 manifest 流程，不要直接改动已冻结的主板面参数。
-5. 本仓库目前尚未确定开源许可证。提交较大贡献前，请先在 Issue 中与维护者确认授权方式。
+4. 选币参数改动走 `board-variants.json` 的 `overrides` 与规则 manifest 流程，不直接改动已冻结的主板面参数。
+5. 依 Apache-2.0 第 5 条，除非你另行明确声明，提交的贡献按 Apache-2.0 授权。
 
-## 作者归属与许可证
+## 许可证与作者归属
 
-- **原作者**：本项目由**原项目独立开发者**独立开发，通过 GitHub 账户 [@shenchuangwl](https://github.com/shenchuangwl) 维护与发布。详见 [COPYRIGHT.md](COPYRIGHT.md)。
-- 使用、fork 或派生本项目时，请保留 `COPYRIGHT.md`、`NOTICE` 及源码中的版权与署名信息，**不得冒称本项目原作者**。
-- **许可证状态**：本仓库为**公开可见（Public）**，但**尚未附带开源许可证**。在权利人正式添加 `LICENSE` 之前，除 GitHub 服务条款允许的查看与 fork 外，不授予其他使用、修改或再分发的权利。公开可见不等于开源授权。
-- 若日后添加开源许可证，使用者依该许可证获得的使用、修改、分发及派生作品署名等权利以许可证条款为准，作者归属声明不构成对这些权利的额外限制。
+本项目以 **[Apache License 2.0](LICENSE)** 开源（SPDX: `Apache-2.0`）。
+
+```text
+Copyright 2026 shenchuangwl (https://github.com/shenchuangwl)
+```
+
+- **原作者**：本项目由原项目独立开发者 [@shenchuangwl](https://github.com/shenchuangwl) 独立开发、维护与发布。详见 [COPYRIGHT.md](COPYRIGHT.md)。
+- **你可以**：使用、复制、修改、合并、发布、分发、再许可和销售本项目及其衍生作品（包括商业用途）。许可证同时包含专利授权（第 3 条）。
+- **再分发时须**（第 4 条）：①附带 `LICENSE` 副本；②在修改过的文件中注明修改；③保留原有的版权、专利、商标与署名声明；④以可读形式保留 [`NOTICE`](NOTICE) 中的署名内容。你可以追加自己的署名，但不得删改原有署名。
+- **署名与名称**：请保留原作者署名，不得冒称本项目原作者。依第 6 条，许可证不授予使用原作者名称或商标的权利，但描述作品来源等合理惯常用途除外。推荐署名写法：
+
+  ```text
+  Based on AI Crypto Portfolio by shenchuangwl
+  https://github.com/shenchuangwl/AI-Crypto-Portfolio — Licensed under Apache-2.0
+  ```
+
+- **与许可证的关系**：`COPYRIGHT.md` 中的作者归属说明不构成对 Apache-2.0 所授权利的额外限制；两者如有不一致，以 `LICENSE` 为准。
 - **第三方组件**：各依赖遵循其自身许可证。TradingView Lightweight Charts（Apache-2.0）要求在渲染图表的页面保留指向 <https://www.tradingview.com> 的署名；展示 CoinGecko 数据时须按其要求署名。详见 [NOTICE](NOTICE)。

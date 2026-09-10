@@ -5,7 +5,8 @@ Live screener API + CONFIRMED feed + SSE push.
 ## Run (detached)
 
 ```bash
-export HERMES_ROOT=/data120/GITHUB/Github/Hermes/Hermes_Binance_Web_Grok_02
+# 在仓库根目录执行（HERMES_ROOT 默认即仓库根目录，可省略）
+cd /path/to/AI-Crypto-Portfolio
 python3 scripts/daemonize.py gateway start
 python3 scripts/daemonize.py gateway status
 python3 scripts/daemonize.py gateway stop
