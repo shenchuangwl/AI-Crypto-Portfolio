@@ -9,6 +9,10 @@ export interface OnlyCoinDaily {
   long: OnlyCoinMember[]; short: OnlyCoinMember[]; onlycoin: OnlyCoinMember[];
   counts: Record<string, number>; coverage: unknown; stale: boolean; as_of?: string;
 }
+export interface OnlyCoinLive extends OnlyCoinDaily {
+  schema: 'onlycoin-live-v1'; version: string; symbols: string[];
+  valid: boolean; status: 'live' | 'empty'; updated_at_utc: string; valid_until_utc: string;
+}
 export interface OnlyCoinSource {
   enabled: boolean; revision: number; generation: number; effective_state: string;
   consumer_connected: boolean; eligibility_only: true;

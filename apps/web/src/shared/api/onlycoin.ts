@@ -1,4 +1,4 @@
-import type { OnlyCoinDaily, OnlyCoinSource, OnlyCoinControl } from '../types/onlycoin';
+import type { OnlyCoinDaily, OnlyCoinLive, OnlyCoinSource, OnlyCoinControl } from '../types/onlycoin';
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || '/api/v1';
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, { ...init, cache: 'no-store', headers: { Accept: 'application/json', ...init?.headers }, signal: init?.signal ?? AbortSignal.timeout(12000) });
@@ -8,6 +8,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 export const fetchOnlyCoinDaily = () => request<OnlyCoinDaily>('/screener-y/dmr-daily');
+export const fetchOnlyCoinLive = () => request<OnlyCoinLive>('/onlycoin/live');
 export function fetchOnlyCoinReview(businessDate: string, asOf: string): Promise<OnlyCoinDaily> {
   const query = new URLSearchParams({ board: 'y', business_date: businessDate, as_of: asOf });
   return request(`/review/onlycoin?${query}`);

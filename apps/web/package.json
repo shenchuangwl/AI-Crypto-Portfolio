@@ -16,6 +16,7 @@
     "verify:board-split": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/board-split.mjs",
     "verify": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-sort.mjs && node tests/.out/period-returns.mjs && node tests/.out/pool-counts.mjs && node tests/.out/review-counts.mjs && node tests/.out/review-time.mjs && node tests/.out/board-split.mjs && node tests/.out/mcap-zone.mjs && node tests/.out/onlycoin.mjs",
     "verify:onlycoin": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/onlycoin.mjs",
+    "verify:onlycoin-live": "node tests/onlycoin-live.browser.mjs",
     "verify:mcap-zone": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-zone.mjs"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "playwright": "1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

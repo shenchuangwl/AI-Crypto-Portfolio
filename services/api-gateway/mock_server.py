@@ -722,6 +722,10 @@ class Handler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
         qs = parse_qs(parsed.query)
 
+        if path == '/api/v1/onlycoin/live':
+            from onlycoin_api import live_payload
+            code, body = live_payload(parse_qs(parsed.query, keep_blank_values=True))
+            return self._json(code, body)
         if path in ('/api/v1/screener-y/dmr-daily', '/api/v1/review/onlycoin'):
             try:
                 from onlycoin_api import daily_payload

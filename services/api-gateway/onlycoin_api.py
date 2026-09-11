@@ -15,6 +15,49 @@ if str(SRC) not in sys.path:
 from coin_selection.onlycoin_ledger import OnlyCoinLedger, business_day, timestamp
 
 
+def live_payload(qs):
+    """Current read-only daily membership, never a historical or trading feed.
+
+    A lease ends at the earliest of midnight, commit+30m and scan+30m.
+    The scan bound prevents a late re-publication reviving an old scan.
+    """
+    version = 'param-v2.0.0-screener-y'
+    empty = dict(board_key='y', schema='onlycoin-live-v1', version=version,
+                 valid=False, status='unavailable', stale=True, symbols=[],
+                 onlycoin=[], long=[], short=[], counts={'onlycoin': 0, 'long': 0, 'short': 0},
+                 updated_at_utc=None, valid_until_utc=None,
+                 dmr_executable=False, consumable_by_dmr=False)
+    if qs:
+        return 400, dict(empty, status='invalid_query', error='LIVE_ENDPOINT_ACCEPTS_NO_QUERY')
+    code, data = daily_payload({})
+    if code != 200:
+        return 503, dict(empty, error='ONLYCOIN_UNAVAILABLE')
+    try:
+        now = timestamp(data['server_time'])
+        updated = timestamp(data['last_committed_at'])
+        start, end = timestamp(data['cycle_start_utc']), timestamp(data['cycle_end_utc'])
+        sid = data['as_of_scan_id']
+        scan_day, seq = sid.split('-')
+        if len(scan_day) != 8 or len(seq) != 3 or not 0 <= int(seq) < 96:
+            raise ValueError('invalid scan')
+        scan = datetime.strptime(scan_day, '%Y%m%d').replace(tzinfo=timezone.utc) + timedelta(minutes=15 * int(seq))
+        expiry = min(end, updated + timedelta(minutes=30), scan + timedelta(minutes=30))
+        valid = (data['board_key'] == 'y' and data['dataset_id'] == 'live'
+                 and data['business_date'] == now.date().isoformat()
+                 and start <= scan <= now < expiry and start <= updated <= now
+                 and data['stale'] is False
+                 and all(m.get('parameter_version') == version for m in data['onlycoin']))
+        metadata = dict(data, schema=empty['schema'], version=version,
+                        updated_at_utc=data['last_committed_at'],
+                        valid_until_utc=expiry.isoformat().replace('+00:00', 'Z'))
+        if not valid:
+            return 503, {**metadata, **{k: v for k, v in empty.items() if k not in ('updated_at_utc', 'valid_until_utc')}, 'status': 'stale'}
+        return 200, dict(metadata, valid=True, status='live' if data['onlycoin'] else 'empty',
+                         symbols=[m['symbol'] for m in data['onlycoin']])
+    except (KeyError, ValueError, TypeError, AttributeError):
+        return 503, dict(empty, error='INVALID_LIVE_PROJECTION')
+
+
 def daily_payload(qs, *, historical=False):
     """Return (HTTP status, JSON object); qs is urllib.parse.parse_qs output."""
     try:

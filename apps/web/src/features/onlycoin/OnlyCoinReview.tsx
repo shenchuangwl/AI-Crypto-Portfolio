@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchOnlyCoinReview } from '../../shared/api/onlycoin';
 import type { OnlyCoinDaily } from '../../shared/types/onlycoin';
 import { OnlyCoinLists } from './OnlyCoinLists';
+import { OnlyCoinLivePanel } from './OnlyCoinLivePanel';
 import { onlyCoinLocalTime, onlyCoinCycleEndInput } from '../../shared/lib/onlycoin';
 export function OnlyCoinReview() {
   const [date, setDate] = useState('');
@@ -25,7 +26,7 @@ export function OnlyCoinReview() {
     } catch (e) { if (id === requestId.current) setError((e as Error).message); }
     finally { if (id === requestId.current) setBusy(false); }
   };
-  return <section className="onlycoin-panel onlycoin-review-panel" aria-busy={busy}>
+  return <><OnlyCoinLivePanel /><section className="onlycoin-panel onlycoin-review-panel" aria-busy={busy}>
     <div className="onlycoin-heading">
       <div><span className="confirmed-kicker">DMR区 · 精选复盘</span><h2><strong>{data ? data.counts.onlycoin : '—'}</strong> OnlyCoin 精选标的 <small>来源候选时点回放</small></h2></div>
       <span className="onlycoin-version">v2.0.0 · 选币榜Y</span>
@@ -41,5 +42,5 @@ export function OnlyCoinReview() {
     {!data && !error && <div className="onlycoin-feedback" role="status">{busy ? '正在读取所选时点的候选名单…' : '选择 UTC 业务日及截至时间，查询 LONG、SHORT 与 OnlyCoin 首次入选名单。'}</div>}
     {data && !data.onlycoin.length && <div className="onlycoin-feedback" role="status">该时点暂无可显示的成员，请结合下方覆盖度确认数据是否完整。</div>}
     {data && <OnlyCoinLists data={data} />}
-  </section>;
+  </section></>;
 }
