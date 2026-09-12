@@ -79,7 +79,7 @@ export const BOARDS: Record<BoardKey, BoardConfig> = {
     dmrExecutable: false,
     dataDir: 'data/coin-selection-y',
     cycleEnabled: true,
-    note: 'v2.0.0 TUNED_V2_MCAP_COMBO：w_mcap=0.25>w_mom=0.20；216 天花板默认关；候选不进执行层',
+    note: 'v2.0.0 TUNED_V2_MCAP_COMBO：w_mcap=0.25>w_mom=0.20；候选不进执行层',
   },
 };
 

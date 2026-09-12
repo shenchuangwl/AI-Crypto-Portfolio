@@ -8,6 +8,7 @@ import {
 import type { CandidateRow, ScreenerSnapshot, ScreenerState } from '../shared/types/screener';
 import { DEFAULT_POOL_STATES, STATE_LABEL } from '../shared/types/screener';
 import { boardConfig, DEFAULT_BOARD, originTagFor, type BoardKey } from '../shared/config/boards';
+import { screenerBrandNote } from '../shared/lib/mcapCeilingStatus';
 import { screenerUiStoreFor } from '../shared/stores/screenerUi';
 import { usePricePoll } from '../shared/hooks/usePricePoll';
 import { useTickerStore } from '../shared/stores/tickerStore';
@@ -202,7 +203,7 @@ export function ScreenerPage({
         expiresAt={snap.expires_at_utc}
         brandMark={cfg.mark}
         brandTitle={`Binance USDT 永续 · ${cfg.label}实时榜`}
-        brandNote={cfg.note}
+        brandNote={screenerBrandNote(cfg, snap.meta)}
       />
       {/* 时间区状态条：只有启用了 24h 周期的板面（选币榜Y）才渲染；
           选币榜的快照没有 meta.cycle，这里返回 null，页面与改动前逐像素相同。 */}

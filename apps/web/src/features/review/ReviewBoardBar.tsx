@@ -14,7 +14,8 @@ import { formatEnterClock } from '../../shared/lib/format';
  * 两本账本是两个 sqlite 文件，从不合表：选入标准不同的交易混在一起算胜率没有意义
  * （§14.4），而且 v2.0.0 重放重建时也不该波及 v1.4.0 的历史。
  *
- * 现阶段 v2.0.0 是 TUNED_V2_MCAP_COMBO（权重分叉；216 天花板默认关）；
+ * 现阶段 v2.0.0 是 TUNED_V2_MCAP_COMBO（权重分叉）。216 天花板是否裁决
+ * 以快照 `mcap_effective.mode` 为准（当前 Y 为 on），不要再写「默认关」。
  * 两边数字分叉是预期，对照入口就是这一条。Y 的 DMR 仍不可执行。
  */
 export function ReviewBoardBar({

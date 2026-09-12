@@ -42,6 +42,7 @@ import {
   originTagFor,
   shortParamVersion,
 } from '../src/shared/config/boards';
+import { mcapCeilingLabel, screenerBrandNote } from '../src/shared/lib/mcapCeilingStatus';
 import { reviewQueryString } from '../src/shared/api/review';
 import { searchToState, stateToSearch } from '../src/features/review/reviewQuery';
 import {
@@ -544,6 +545,18 @@ console.log('\n=== 9. 选币榜首屏不得整页刷新 / 不得挡在 confirmed
     apiSrc.includes('visibilitychange') && apiSrc.includes('document.hidden'));
   check('工作台状态栏不再每 15s 拉 /screener/latest',
     !readFileSync('src/features/workspace/TerminalStatusBar.tsx', 'utf8').includes('/screener/latest'));
+}
+
+console.log('\n=== 216 天花板页头跟快照开关 ===');
+{
+  const yOn = screenerBrandNote(BOARDS.y, { mcap_effective: { mode: 'on' } } as never);
+  check('Y mode=on 显示开', !!yOn && yOn.includes('216 天花板 开') && !yOn.includes('默认关'), yOn);
+  const yOff = screenerBrandNote(BOARDS.y, { mcap_effective: { mode: 'off' } } as never);
+  check('Y mode=off 显示关', !!yOff && yOff.includes('216 天花板 关') && !yOff.includes('默认关'), yOff);
+  const xSh = screenerBrandNote(BOARDS.x, { mcap_effective: { mode: 'shadow' } } as never);
+  check('X shadow 显示影子', !!xSh && xSh.includes('影子'), xSh);
+  check('静态 note 不再写默认关', !BOARDS.y.note?.includes('默认关'));
+  check('无快照时不捏造开关', mcapCeilingLabel(undefined) === null);
 }
 
 console.log(failures === 0 ? '\nALL PASS (0 failures)' : '\n' + failures + ' FAILURES');
