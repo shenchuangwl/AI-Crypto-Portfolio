@@ -43,7 +43,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlparse, urlencode
+from urllib.parse import parse_qs, unquote, urlparse, urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
@@ -440,6 +440,23 @@ def _http_get_json(url: str, timeout: float = 12.0) -> Any:
         return json.loads(resp.read().decode("utf-8"))
 
 
+def decode_path_symbol(raw: str) -> str:
+    """Path segment → exchange symbol.
+
+    Browsers send ``encodeURIComponent('龙虾USDT')`` once. ``urlparse`` keeps
+    the percent-encoding; ``.upper()`` then ``urlencode`` again turns it into
+    ``%25E9…`` and Binance returns 400. Each failed interval then synthesized
+    an independent random walk (30m ~80, 2h/6h ~33) instead of the live print.
+    """
+    s = (raw or "").strip()
+    for _ in range(3):
+        nxt = unquote(s)
+        if nxt == s:
+            break
+        s = nxt
+    return s.strip()
+
+
 def _normalize_fapi_klines(raw: Any) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for row in raw or []:
@@ -477,6 +494,86 @@ def fetch_live_klines(symbol: str, interval: str, limit: int) -> tuple[list[dict
     q2 = urlencode({"symbol": symbol, "interval": interval, "limit": limit})
     raw = _http_get_json(f"{FAPI_REST}/fapi/v1/klines?{q2}", timeout=14.0)
     return _normalize_fapi_klines(raw), "binance_fapi"
+
+
+def _last_price_hint(symbol: str) -> Optional[float]:
+    """Best live print so a synthetic fallback stays on the real price scale."""
+    try:
+        body = _http_get_json(f"{MARKET_INGEST_URL}/v1/prices", timeout=4.0)
+        rows = body.get("prices") if isinstance(body, dict) else body
+        for row in rows or []:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("symbol") or "").upper() != symbol.upper():
+                continue
+            for key in ("last", "last_price", "mark", "mark_price", "close"):
+                v = row.get(key)
+                if v is not None:
+                    px = float(v)
+                    if px > 0:
+                        return px
+    except Exception:
+        return None
+    return None
+
+
+def synthetic_klines(
+    symbol: str,
+    interval: str,
+    limit: int,
+    *,
+    last_price: Optional[float] = None,
+) -> list[dict[str, Any]]:
+    """One 15m random walk, bucketed to ``interval``.
+
+    Previous fallback seeded ``sum(ord)+step`` independently per interval, so
+    30m/2h/6h were three unrelated price series. Same seed + aggregation keeps
+    the path continuous across the chart bar even when Binance is unreachable.
+    """
+    step = {"15m": 900, "30m": 1800, "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "1d": 86400}.get(
+        interval, 900
+    )
+    base = 900
+    ratio = max(1, int(step // base))
+    n_fine = max(limit * ratio, limit)
+    end = int(datetime.now(timezone.utc).timestamp()) // base * base
+    seed = sum(ord(c) for c in symbol)
+    price = float(last_price) if last_price and last_price > 0 else 20 + (seed % 80)
+    state = seed & 0xFFFFFFFF
+
+    def rnd() -> float:
+        nonlocal state
+        state = (1664525 * state + 1013904223) & 0xFFFFFFFF
+        return state / 0xFFFFFFFF
+
+    fine: list[dict[str, Any]] = []
+    for i in range(n_fine - 1, -1, -1):
+        t = end - i * base
+        drift = (rnd() - 0.48) * price * 0.02
+        o = price
+        c = max(0.01 * (last_price or 1), o + drift) if last_price else max(0.01, o + drift)
+        h = max(o, c) * (1 + rnd() * 0.008)
+        l = min(o, c) * (1 - rnd() * 0.008)
+        v = 1000 + rnd() * 50000
+        fine.append({"time": t, "open": o, "high": h, "low": l, "close": c, "volume": v})
+        price = c
+
+    if ratio == 1:
+        return fine[-limit:]
+    out: list[dict[str, Any]] = []
+    for i in range(0, len(fine) - ratio + 1, ratio):
+        chunk = fine[i : i + ratio]
+        out.append(
+            {
+                "time": chunk[0]["time"],
+                "open": chunk[0]["open"],
+                "high": max(b["high"] for b in chunk),
+                "low": min(b["low"] for b in chunk),
+                "close": chunk[-1]["close"],
+                "volume": sum(b["volume"] for b in chunk),
+            }
+        )
+    return out[-limit:]
 
 
 def load_universe_payload() -> dict[str, Any]:
@@ -837,7 +934,7 @@ class Handler(BaseHTTPRequestHandler):
 
         m = re.fullmatch(r"/api/v1/review/symbols/([^/]+)", path)
         if m:
-            return self._review(qs, kind="symbol", symbol=m.group(1))
+            return self._review(qs, kind="symbol", symbol=decode_path_symbol(m.group(1)))
 
         if path in ("/api/v1/markets/universe", "/api/v1/universe"):
             uni = load_universe_payload()
@@ -874,7 +971,7 @@ class Handler(BaseHTTPRequestHandler):
 
         m = re.fullmatch(r"/api/v1/market/([^/]+)/klines", path)
         if m:
-            symbol = m.group(1).upper()
+            symbol = decode_path_symbol(m.group(1)).upper()
             interval = qs.get("interval", ["15m"])[0]
             if interval not in ALLOWED_KLINE_INTERVALS:
                 return self._json(400, {"error": "bad_interval", "allowed": sorted(ALLOWED_KLINE_INTERVALS)})
@@ -892,30 +989,8 @@ class Handler(BaseHTTPRequestHandler):
                 )
             except Exception as e:
                 sys.stderr.write(f"live klines failed, mock fallback: {e}\n")
-                step = {"15m": 900, "30m": 1800, "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "1d": 86400}.get(interval, 900)
-                end = int(datetime.now(timezone.utc).timestamp())
-                seed = sum(ord(c) for c in symbol) + step
-                price = 20 + (seed % 80)
-                bars = []
-                state = seed & 0xFFFFFFFF
-
-                def rnd() -> float:
-                    nonlocal state
-                    state = (1664525 * state + 1013904223) & 0xFFFFFFFF
-                    return state / 0xFFFFFFFF
-
-                for i in range(limit - 1, -1, -1):
-                    t = end - i * step
-                    drift = (rnd() - 0.48) * price * 0.02
-                    o = price
-                    c = max(0.01, o + drift)
-                    h = max(o, c) * (1 + rnd() * 0.008)
-                    l = min(o, c) * (1 - rnd() * 0.008)
-                    v = 1000 + rnd() * 50000
-                    bars.append(
-                        {"time": t, "open": o, "high": h, "low": l, "close": c, "volume": v}
-                    )
-                    price = c
+                hint = _last_price_hint(symbol)
+                bars = synthetic_klines(symbol, interval, limit, last_price=hint)
                 return self._json(
                     200,
                     {
@@ -1069,7 +1144,7 @@ class Handler(BaseHTTPRequestHandler):
 
         m = re.fullmatch(r"/symbols/([^/]+)", sub)
         if m:
-            symbol = m.group(1).upper()
+            symbol = decode_path_symbol(m.group(1)).upper()
             direction = (qs.get("direction", ["up"])[0] or "up").lower()
             snap, _ = load_screener_latest(board_key)
             if not snap:
