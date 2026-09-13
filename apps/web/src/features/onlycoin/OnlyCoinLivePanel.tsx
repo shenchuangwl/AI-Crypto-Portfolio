@@ -7,6 +7,6 @@ export function OnlyCoinLivePanel() {
     <p className="onlycoin-note">与选币榜Y今日累计同源 · 每15秒刷新 · 00:00 UTC重置 · 下方历史条件不影响本区 · 仅候选，不授权交易</p>
     {error && <p className="onlycoin-feedback onlycoin-feedback-error" role="alert">实时来源不可用，已隐藏缓存成员：{error}</p>}
     {!data && !error && <p className="onlycoin-feedback" role="status">{expired ? '实时来源已过期，旧成员已隐藏；等待更新。' : '正在读取实时名单…'}</p>}
-    {data && <><p className="muted">状态 {data.status} · 更新 UTC {data.updated_at_utc} · 有效至 UTC {data.valid_until_utc}</p><OnlyCoinLists data={data} /></>}
+    {data && <><p className="muted">状态 {data.status} · 更新 UTC {data.updated_at_utc} · 有效至 UTC {data.valid_until_utc}</p><OnlyCoinLists data={data} originTag="review-onlycoin" /></>}
   </section>;
 }

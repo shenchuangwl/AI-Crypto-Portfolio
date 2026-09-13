@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { OnlyCoinLists } from '../src/features/onlycoin/OnlyCoinLists';
+import { backHrefFromOrigin, boardFromOrigin } from '../src/shared/config/boards';
 import type { OnlyCoinDaily } from '../src/shared/types/onlycoin';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -48,6 +49,24 @@ const html = renderToStaticMarkup(<MemoryRouter><OnlyCoinLists data={fixture} />
 assert.equal((html.match(/<li/g) || []).length, 31, 'all 15 members in each nonempty list, never slice to six');
 assert.ok(html.indexOf('LONG (') < html.indexOf('SHORT (') && html.indexOf('SHORT (') < html.indexOf('OnlyCoin ('));
 assert.match(html, /COIN14USDT/); assert.match(html, /observed_archive/); assert.match(html, /数据陈旧/);
+// Identical data must not collapse the review entry into the screener entry.
+for (const originTag of ['screener-y', 'review-onlycoin'] as const) {
+  const links = renderToStaticMarkup(<MemoryRouter><OnlyCoinLists data={{ ...fixture, short: members }} originTag={originTag} /></MemoryRouter>);
+  const hrefs = [...links.matchAll(/href="([^"]+)"/g)].map(m => m[1].replaceAll('&amp;', '&'));
+  assert.equal(hrefs.length, 45, 'all LONG/SHORT/OnlyCoin entries carry the caller origin');
+  for (const href of hrefs) {
+    const from = new URL(href, 'http://test').searchParams.get('from');
+    assert.equal(from, originTag);
+    assert.equal(boardFromOrigin(from), 'y', 'review navigation must retain Y detail/SSE data');
+    assert.equal(backHrefFromOrigin(from), originTag === 'screener-y' ? '/screener-y' : '/review?board=y#onlycoin');
+  }
+}
+assert.match(html, /from=screener-y/, 'existing screener caller keeps its default origin');
+assert.equal(backHrefFromOrigin('review'), '/review', 'original ledger return stays separate');
+for (const file of ['OnlyCoinReview', 'OnlyCoinLivePanel']) {
+  assert.match(readFileSync(`src/features/onlycoin/${file}.tsx`, 'utf8'), /<OnlyCoinLists data=\{data\} originTag="review-onlycoin"/);
+}
+console.log('PASS separate screener A, original ledger B and review OnlyCoin C origins');
 const css = readFileSync('src/features/onlycoin/onlycoin.css','utf8');
 // Six compact rows: 6*30px + 5*4px gaps = 200px; data is never sliced.
 assert.match(css, /max-height:200px/); assert.match(css, /height:30px/); assert.match(css, /overflow-y:auto/);

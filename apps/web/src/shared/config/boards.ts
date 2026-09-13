@@ -106,7 +106,7 @@ export function originTagFor(board: BoardKey): string {
  */
 export function boardFromOrigin(from: string | null | undefined): BoardKey {
   const key = (from || '').trim();
-  if (key === 'screener-y' || key === 'y') return 'y';
+  if (key === 'screener-y' || key === 'y' || key === 'review-onlycoin') return 'y';
   if (key === 'screener-x' || key === 'x') return 'x';
   return DEFAULT_BOARD;
 }
@@ -119,6 +119,7 @@ const ORIGIN_HREF: Record<string, string> = {
   'screener-y': BOARDS.y.route,
   y: BOARDS.y.route,
   review: '/review',
+  'review-onlycoin': '/review?board=y#onlycoin',
   quotes: '/quotes',
   terminal: '/terminal',
   markets: '/markets',

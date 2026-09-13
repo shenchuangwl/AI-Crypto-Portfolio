@@ -65,9 +65,14 @@ function RangeInput({
 
 export function ReviewPage({ embedded = false }: { embedded?: boolean }) {
   const board = useReviewUi(s => s.board);
-  const [mode, setMode] = useState<'normal' | 'onlycoin'>('normal');
-  useEffect(() => { if (board !== 'y') setMode('normal'); }, [board]);
-  const onlycoin = board === 'y' && mode === 'onlycoin';
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Keep the submodule in the route; zones/filters retain the existing review store lifecycle.
+  const onlycoin = board === 'y' && location.hash === '#onlycoin';
+  const setMode = (mode: 'normal' | 'onlycoin') => navigate({
+    search: location.search,
+    hash: mode === 'onlycoin' ? '#onlycoin' : '',
+  }, { replace: true });
   return <>
     {board === 'y' && <div className="onlycoin-review-tabs">
       <button type="button" aria-pressed={!onlycoin} onClick={() => setMode('normal')}>原复盘 · 进出账本</button>
@@ -286,7 +291,7 @@ function NormalReviewPage({ embedded = false }: { embedded?: boolean }) {
       sortDesc: ui.sortDesc,
     });
     if (!booted) return;
-    if (`?${search}` !== location.search) navigate({ search }, { replace: true });
+    if (`?${search}` !== location.search) navigate({ search, hash: location.hash }, { replace: true });
   }, [
     ui.board,
     ui.zones, ui.direction, ui.attribution, ui.zoneMode, ui.rangeDays, ui.useCustom,
@@ -294,7 +299,7 @@ function NormalReviewPage({ embedded = false }: { embedded?: boolean }) {
     ui.onlyFlagged, ui.excludeCycleReset, ui.wholeCycles, ui.minDwellNodes, ui.columnPreset,
     ui.paramVersion,
     ui.sortId, ui.sortDesc,
-    navigate, location.search, booted,
+    navigate, location.search, location.hash, booted,
   ]);
 
   // Rows arrive already ordered by the ledger (whole window, not one page).

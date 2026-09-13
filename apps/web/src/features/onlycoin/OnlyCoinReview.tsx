@@ -41,6 +41,6 @@ export function OnlyCoinReview() {
     {error && <p className="onlycoin-feedback onlycoin-feedback-error" role="alert">回放不可用：{error}</p>}
     {!data && !error && <div className="onlycoin-feedback" role="status">{busy ? '正在读取所选时点的候选名单…' : '选择 UTC 业务日及截至时间，查询 LONG、SHORT 与 OnlyCoin 首次入选名单。'}</div>}
     {data && !data.onlycoin.length && <div className="onlycoin-feedback" role="status">该时点暂无可显示的成员，请结合下方覆盖度确认数据是否完整。</div>}
-    {data && <OnlyCoinLists data={data} />}
+    {data && <OnlyCoinLists data={data} originTag="review-onlycoin" />}
   </section></>;
 }
