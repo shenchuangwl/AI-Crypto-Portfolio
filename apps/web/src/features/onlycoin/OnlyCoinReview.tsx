@@ -4,17 +4,21 @@ import type { OnlyCoinDaily } from '../../shared/types/onlycoin';
 import { OnlyCoinLists } from './OnlyCoinLists';
 import { OnlyCoinLivePanel } from './OnlyCoinLivePanel';
 import { onlyCoinLocalTime, onlyCoinCycleEndInput } from '../../shared/lib/onlycoin';
+import { OnlyCoinStatsPanel } from './OnlyCoinStatsPanel';
 export function OnlyCoinReview() {
   const [date, setDate] = useState('');
   const [asOf, setAsOf] = useState('');
   const [data, setData] = useState<OnlyCoinDaily | null>(null);
+  // 已完成回放的业务日与截至时点。**只在查询成功后才写**，所以输入框里的预填值
+  // 不会被当成「已选择日期」；清空 / 改日期时先归零，统计区随之整块隐藏。
+  const [replayed, setReplayed] = useState<{ date: string; asOf: string } | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const requestId = useRef(0);
   useEffect(() => () => { requestId.current++; }, []);
-  const clear = () => { requestId.current++; setData(null); setBusy(false); setError(''); };
+  const clear = () => { requestId.current++; setData(null); setReplayed(null); setBusy(false); setError(''); };
   const load = async () => {
-    const id = ++requestId.current; setBusy(true); setData(null); setError('');
+    const id = ++requestId.current; setBusy(true); setData(null); setReplayed(null); setError('');
     try {
       const utc = onlyCoinLocalTime(asOf);
       if (utc.slice(0, 10) !== date) throw new Error('截至时间必须位于该业务周期：本地当日07:00至次日07:00之前。');
@@ -22,6 +26,7 @@ export function OnlyCoinReview() {
       if (id === requestId.current) {
         if (value.board_key !== 'y' || value.business_date !== date) throw new Error('复盘业务日 / 板面不匹配');
         setData(value);
+        setReplayed({ date, asOf: utc });
       }
     } catch (e) { if (id === requestId.current) setError((e as Error).message); }
     finally { if (id === requestId.current) setBusy(false); }
@@ -42,5 +47,9 @@ export function OnlyCoinReview() {
     {!data && !error && <div className="onlycoin-feedback" role="status">{busy ? '正在读取所选时点的候选名单…' : '选择 UTC 业务日及截至时间，查询 LONG、SHORT 与 OnlyCoin 首次入选名单。'}</div>}
     {data && !data.onlycoin.length && <div className="onlycoin-feedback" role="status">该时点暂无可显示的成员，请结合下方覆盖度确认数据是否完整。</div>}
     {data && <OnlyCoinLists data={data} originTag="review-onlycoin" />}
-  </section></>;
+  </section>
+  {/* 历史数据统计：只有「已选择具体回放日期且回放加载完成」时才存在。
+      key 绑定回放身份 —— 换日期即重挂载，上一日期的行不可能残留。 */}
+  {replayed && <OnlyCoinStatsPanel key={`${replayed.date}|${replayed.asOf}`} businessDate={replayed.date} asOf={replayed.asOf} />}
+  </>;
 }

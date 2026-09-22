@@ -14,6 +14,14 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 from coin_selection.onlycoin_ledger import OnlyCoinLedger, business_day, timestamp
 
+#: 《OnlyCoin · 来源候选回放》历史统计的功能开关。设为 off / 0 / false / no 时
+#: 路由整体退回 404，前端面板同步隐藏 —— 无需回滚代码即可停用新功能。
+STATS_FLAG_ENV = 'ONLYCOIN_STATS'
+
+
+def stats_enabled() -> bool:
+    return os.environ.get(STATS_FLAG_ENV, 'on').strip().lower() not in ('off', '0', 'false', 'no')
+
 
 def live_payload(qs):
     """Current read-only daily membership, never a historical or trading feed.
@@ -114,3 +122,91 @@ def daily_payload(qs, *, historical=False):
             return 200, dict(ledger.daily(day, as_of=as_of), dataset_id=dataset_id)
     except (sqlite3.Error, OSError, ValueError) as exc:
         return 503, {'error': 'ONLYCOIN_UNAVAILABLE', 'detail': str(exc), 'board_key': 'y', 'stale': True}
+
+
+def stats_payload(qs):
+    """《OnlyCoin · 来源候选回放》DMR 区历史统计。返回 (HTTP 状态, JSON 对象)。
+
+    成员只取 OnlyCoin 独立账本（与上方三列名单同一投影），价格只取板面快照打印价。
+    本函数不打开 ``review/ledger.sqlite``，因此不可能套用原账本的成交结果。
+    """
+    from coin_selection.onlycoin_stats import (
+        MAX_COMPARE_RANGES,
+        OnlyCoinStatsError,
+        build_stats,
+        parse_ts,
+    )
+
+    if not stats_enabled():
+        return 404, {'error': 'ONLYCOIN_STATS_DISABLED', 'board_key': 'y',
+                     'hint': f'unset {STATS_FLAG_ENV} (or set it to "on") to enable the replay statistics'}
+    try:
+        def one(name):
+            value = qs.get(name)
+            if value is None:
+                return None
+            if not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], str) or not value[0]:
+                raise ValueError(f'{name} requires one nonempty value')
+            return value[0]
+
+        if one('board') != 'y':
+            raise ValueError('OnlyCoin statistics require board=y')
+        day = one('business_date')
+        if not day:
+            raise ValueError('business_date is required')
+        start = business_day(day)
+        as_of_raw = one('as_of')
+        if not as_of_raw:
+            raise ValueError('as_of is required')
+        as_of = timestamp(as_of_raw)
+        if not start <= as_of < start + timedelta(days=1):
+            raise ValueError('as_of must belong to requested UTC business day')
+
+        # 自定义起止：两端必须同时给，且必须是显式 UTC。半填不成立，也绝不静默回落。
+        cf, ct = one('from'), one('to')
+        if bool(cf) != bool(ct):
+            raise ValueError('custom range requires both from and to')
+        custom = (parse_ts(cf), parse_ts(ct)) if cf and ct else None
+        if custom and custom[1] <= custom[0]:
+            raise ValueError('custom range end must be after start')
+
+        compare = []
+        raw_compare = qs.get('compare') or []
+        if not isinstance(raw_compare, list):
+            raise ValueError('compare must be repeated from~to values')
+        if len(raw_compare) > MAX_COMPARE_RANGES:
+            raise ValueError(f'at most {MAX_COMPARE_RANGES} compare ranges')
+        for i, raw in enumerate(raw_compare):
+            if not isinstance(raw, str) or raw.count('~') != 1:
+                raise ValueError('compare value must be <fromISO>~<toISO>')
+            a, _, b = raw.partition('~')
+            ca, cb = parse_ts(a), parse_ts(b)
+            if cb <= ca:
+                raise ValueError('compare range end must be after start')
+            compare.append((f'c{i + 1}', ca, cb))
+
+        for unsupported in ('cursor', 'version', 'dataset_id'):
+            if unsupported in qs:
+                raise ValueError(f'{unsupported} is not supported by this endpoint')
+    except (ValueError, TypeError, OnlyCoinStatsError) as exc:
+        return 400, {'error': 'INVALID_ONLYCOIN_STATS_QUERY', 'detail': str(exc), 'board_key': 'y'}
+
+    review = ROOT / 'data/coin-selection-y/review'
+    snapshots = ROOT / 'data/coin-selection-y/snapshots'
+    try:
+        # 数据集选择与 /review/onlycoin 同规则：该业务日有 live 提交就用 live，
+        # 否则读档案库。绝不把档案证据替换成一个当刻还不存在的 live 日。
+        with OnlyCoinLedger(review / 'onlycoin.sqlite', readonly=True) as live:
+            dataset_id = 'live' if live.has_day(day) else 'archive'
+            if dataset_id == 'live':
+                body = build_stats(ledger_conn=live.conn, snapshots=snapshots, business_date=day,
+                                   as_of=as_of, custom=custom, compare=compare)
+                return 200, dict(body, dataset_id=dataset_id)
+        with OnlyCoinLedger(review / 'onlycoin-archive.sqlite', readonly=True) as archive:
+            body = build_stats(ledger_conn=archive.conn, snapshots=snapshots, business_date=day,
+                               as_of=as_of, custom=custom, compare=compare)
+            return 200, dict(body, dataset_id='archive')
+    except OnlyCoinStatsError as exc:
+        return 400, {'error': 'ONLYCOIN_STATS_RANGE_REJECTED', 'detail': str(exc), 'board_key': 'y'}
+    except (sqlite3.Error, OSError, ValueError) as exc:
+        return 503, {'error': 'ONLYCOIN_STATS_UNAVAILABLE', 'detail': str(exc), 'board_key': 'y', 'stale': True}

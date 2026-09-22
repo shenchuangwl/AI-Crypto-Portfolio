@@ -30,4 +30,5 @@ export default [
   gate('board-split'),
   gate('mcap-zone'),
   gate('onlycoin'),
+  gate('onlycoin-stats'),
 ];

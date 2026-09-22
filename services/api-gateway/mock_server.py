@@ -823,6 +823,16 @@ class Handler(BaseHTTPRequestHandler):
             from onlycoin_api import live_payload
             code, body = live_payload(parse_qs(parsed.query, keep_blank_values=True))
             return self._json(code, body)
+        if path == '/api/v1/review/onlycoin/stats':
+            # OnlyCoin 回放的 DMR 区历史统计。功能开关在 onlycoin_api.stats_enabled()，
+            # 关掉时返回 404，网关其余路由不受影响。
+            try:
+                from onlycoin_api import stats_payload
+                code, body = stats_payload(qs)
+                return self._json(code, body)
+            except Exception as exc:  # noqa: BLE001 — 统计异常绝不拖垮网关
+                traceback.print_exc()
+                return self._json(503, {'error': 'onlycoin_stats_unavailable', 'detail': str(exc)})
         if path in ('/api/v1/screener-y/dmr-daily', '/api/v1/review/onlycoin'):
             try:
                 from onlycoin_api import daily_payload

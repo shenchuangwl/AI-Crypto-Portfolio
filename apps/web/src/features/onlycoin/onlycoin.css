@@ -52,3 +52,17 @@
 @media(max-width:640px) { .onlycoin-review-panel { margin:10px; } .onlycoin-query { padding:10px; } .onlycoin-query label { width:100%; } .onlycoin-query input,.onlycoin-query label:nth-child(2) input { width:100%; } .onlycoin-query-button { width:100%; } }
 @media(max-width:1000px) { .onlycoin-lists li { grid-template-columns:minmax(0,1fr) auto; gap:5px; } .onlycoin-lists li details { display:none; } }
 @media(max-width:640px) { .onlycoin-panel { padding:10px; } .onlycoin-lists { grid-template-columns:repeat(3,minmax(220px,1fr)); overflow-x:auto; padding-bottom:5px; } .onlycoin-heading { gap:8px; } .onlycoin-form label { width:100%; margin:0; } }
+/* —— DMR区 · 历史数据统计（OnlyCoin 回放） —— */
+.onlycoin-stats-panel { margin:12px 14px; }
+.onlycoin-stats-panel .review-cards,.onlycoin-stats-panel .review-compare,.onlycoin-stats-panel .review-meta { padding-left:0; padding-right:0; }
+.onlycoin-stats-controls { padding:10px 12px; margin:12px 0 6px; border:1px solid #293e35; border-radius:8px; background:#111c18; }
+.onlycoin-stats-controls input[type='datetime-local'] { height:30px; width:200px; font-variant-numeric:tabular-nums; }
+.onlycoin-stats-controls .toolbar-label { display:inline-flex; flex-direction:row; align-items:center; gap:5px; margin:0; color:#b4c2ba; }
+.onlycoin-stats-controls .review-misaligned { color:#e7c66a; }
+.onlycoin-stats-panel .grid-wrap.static { margin-top:10px; border:1px solid var(--border,#303a46); border-radius:8px; }
+.onlycoin-stats-table { font-size:12px; font-variant-numeric:tabular-nums; }
+.onlycoin-stats-table tbody tr:hover { background:#18231f; }
+.onlycoin-stats-table tbody tr.review-open { opacity:.72; }
+.onlycoin-stats-table a { color:var(--text-0,#e2e5e9); text-decoration:none; font-weight:650; }
+.onlycoin-stats-panel .empty { padding:18px; text-align:center; color:var(--text-1,#84909f); font-size:12px; }
+@media(max-width:640px) { .onlycoin-stats-panel { margin:10px; } .onlycoin-stats-controls input[type='datetime-local'] { width:100%; } }

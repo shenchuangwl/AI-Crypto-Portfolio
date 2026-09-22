@@ -14,11 +14,12 @@
     "verify:review-counts": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/review-counts.mjs",
     "verify:review-time": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/review-time.mjs",
     "verify:board-split": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/board-split.mjs",
-    "verify": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-sort.mjs && node tests/.out/period-returns.mjs && node tests/.out/pool-counts.mjs && node tests/.out/review-counts.mjs && node tests/.out/review-time.mjs && node tests/.out/board-split.mjs && node tests/.out/mcap-zone.mjs && node tests/.out/onlycoin.mjs",
+    "verify": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-sort.mjs && node tests/.out/period-returns.mjs && node tests/.out/pool-counts.mjs && node tests/.out/review-counts.mjs && node tests/.out/review-time.mjs && node tests/.out/board-split.mjs && node tests/.out/mcap-zone.mjs && node tests/.out/onlycoin.mjs && node tests/.out/onlycoin-stats.mjs",
     "verify:onlycoin": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/onlycoin.mjs",
     "verify:onlycoin-live": "node tests/onlycoin-live.browser.mjs",
     "verify:kline-return": "node tests/kline-return.browser.mjs",
-    "verify:mcap-zone": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-zone.mjs"
+    "verify:mcap-zone": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/mcap-zone.mjs",
+    "verify:onlycoin-stats": "tsc -p tsconfig.test.json --noEmit && rolldown -c tests/rolldown.config.mjs && node tests/.out/onlycoin-stats.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",

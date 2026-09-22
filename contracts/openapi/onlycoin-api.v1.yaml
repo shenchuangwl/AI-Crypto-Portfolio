@@ -47,6 +47,66 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '503':
           $ref: '#/components/responses/Unavailable'
+  /api/v1/review/onlycoin/stats:
+    get:
+      operationId: getOnlyCoinReviewStats
+      summary: Unique-coin DMR statistics for the OnlyCoin replay, closed at the business-day node
+      description: |
+        Membership comes only from the OnlyCoin dataset (the same projection as
+        /api/v1/review/onlycoin); prices come only from board snapshot prints.
+        The occupancy ledger is never read, so these are not its trade results.
+        Exit is the last 15m node before the 00:00 UTC day boundary (-095 / 23:45Z),
+        not the moment the symbol actually left the pool. A business day that has
+        not ended yields status OPEN rows with null PnL, never a complete-day figure.
+        Disabled deployments answer 404 ONLYCOIN_STATS_DISABLED; this is not an error.
+      parameters:
+        - name: board
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [y]
+        - $ref: '#/components/parameters/BusinessDate'
+        - $ref: '#/components/parameters/AsOf'
+        - name: from
+          in: query
+          required: false
+          description: Custom range start (UTC). Must be sent together with `to`.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Custom range end, exclusive (UTC). Must be sent together with `from`.
+          schema:
+            type: string
+            format: date-time
+        - name: compare
+          in: query
+          required: false
+          description: |
+            Up to 3 independent comparison ranges as `<fromISO>~<toISO>`; repeat the
+            parameter per range. Each range performs its own first-entry and
+            unique-coin deduplication, and returns a summary only.
+          schema:
+            type: array
+            maxItems: 3
+            items:
+              type: string
+      responses:
+        '200':
+          description: Unique-coin statistics for the main range plus comparison summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnlyCoinStats'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '404':
+          description: Statistics disabled by the deployment flag ONLYCOIN_STATS
+        '503':
+          $ref: '#/components/responses/Unavailable'
   /api/v1/onlycoin/sources/screener-y/status:
     get:
       operationId: getOnlyCoinYSourceStatus
@@ -161,6 +221,176 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    OnlyCoinStats:
+      type: object
+      additionalProperties: true
+      required: [schema, board_key, business_date, as_of, main, compare]
+      properties:
+        schema:
+          type: string
+          enum: [onlycoin-stats-v1]
+        board_key:
+          type: string
+          enum: [y]
+        parameter_version:
+          type: string
+        business_date:
+          type: string
+          format: date
+        as_of:
+          type: string
+          format: date-time
+        server_time:
+          type: string
+          format: date-time
+        dataset_id:
+          type: string
+          enum: [live, archive]
+        snapshot_reads:
+          type: integer
+        node_grid:
+          type: object
+          additionalProperties: true
+          description: 96 nodes of 15 minutes; last_node_seq 95 is the day close used as exit.
+        pnl_basis:
+          type: object
+          additionalProperties: true
+          description: |
+            Declares the calculation basis. pnl_pct is the direction-aware realized
+            percentage from the shared review PnL function; the project's 盈亏数值
+            column is the sign 1/0/-1; position, quantity, principal, leverage, fees
+            and funding are all excluded because no such input exists in this data.
+        main:
+          $ref: '#/components/schemas/OnlyCoinStatRange'
+        compare:
+          type: array
+          items:
+            $ref: '#/components/schemas/OnlyCoinStatRange'
+    OnlyCoinStatRange:
+      type: object
+      additionalProperties: true
+      required: [id, label, from, to, cutoff]
+      description: |
+        One independent statistics range. `rows` is present for the main range only.
+        `cutoff` is the causal availability bound: only commits with
+        available_at <= cutoff are projected.
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        cutoff:
+          type: string
+          format: date-time
+        span_days:
+          type: number
+        unique_symbols:
+          type: integer
+        incomplete_days:
+          type: array
+          items:
+            type: string
+            format: date
+        days_with_commits:
+          type: array
+          items:
+            type: string
+            format: date
+        error:
+          type: string
+        summary:
+          type: object
+          additionalProperties: true
+          description: Same shape as the review summary; produced by the shared summarize function.
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/OnlyCoinStatRow'
+    OnlyCoinStatRow:
+      type: object
+      additionalProperties: true
+      required: [coin_id, symbol, pool, direction, status, enter_time_utc]
+      description: |
+        One unique coin, counted once per range at its first DMR entry.
+        Missing prices stay null and are flagged; they are never zero-filled.
+      properties:
+        coin_id:
+          type: string
+          description: canonical_asset_id, else underlying_asset, else symbol; upper case.
+        symbol:
+          type: string
+        canonical_asset_id:
+          type: string
+          nullable: true
+        pool:
+          type: string
+          enum: [LONG, SHORT]
+        direction:
+          type: string
+          enum: [up, down]
+        zone:
+          type: string
+          enum: [DMR]
+        status:
+          type: string
+          enum: [CLOSED, OPEN]
+          description: OPEN means the first-entry business day has not ended; never in any PnL figure.
+        business_date:
+          type: string
+          format: date
+        day_complete:
+          type: boolean
+        enter_scan_id:
+          type: string
+        enter_time_utc:
+          type: string
+          format: date-time
+        enter_price:
+          type: number
+          nullable: true
+        enter_price_source:
+          type: string
+          nullable: true
+        exit_scan_id:
+          type: string
+          nullable: true
+        exit_time_utc:
+          type: string
+          format: date-time
+          nullable: true
+        exit_price:
+          type: number
+          nullable: true
+        exit_price_source:
+          type: string
+          nullable: true
+        dwell_minutes:
+          type: number
+          nullable: true
+        dwell_nodes:
+          type: integer
+          nullable: true
+        pnl_pct:
+          type: number
+          nullable: true
+        pnl_sign:
+          type: integer
+          nullable: true
+          enum: [1, 0, -1, null]
+        repeat_entries:
+          type: integer
+          description: Later re-entries of the same unique coin inside the range; not counted again.
+        flags:
+          type: array
+          items:
+            type: string
+          description: INCOMPLETE_DAY / MISSING_ENTRY_PRICE / MISSING_EXIT_PRICE / EXIT_PRICE_PREV_NODE
     Error:
       type: object
       additionalProperties: true
