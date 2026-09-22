@@ -159,6 +159,13 @@ def test_physical_coverage_reproduces_document_b_facts():
     if not ids:
         print("  SKIP  no snapshot in the audited window")
         return
+    # 审计窗口从 20260815-001 起；31 天保留策略（packages/config/retention.json）
+    # 会按日把更早的快照清掉。起点一旦被清，这组读数就无法再从现网数据复现
+    # —— 那是策略在正常工作，不是覆盖度回退。起点还在时照常逐项断言。
+    earliest = min(ids, key=cov.node_index)
+    if cov.node_index(earliest) > cov.node_index("20260815-001"):
+        print(f"  SKIP  audited window start pruned by retention (earliest live {earliest})")
+        return
     c = cov.physical_coverage(ids)
     assert c["first_scan_id"] == "20260815-001", c["first_scan_id"]
     assert c["last_scan_id"] == "20260831-081", c["last_scan_id"]
